@@ -1,0 +1,503 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+const fmtTime = (dt) => dt
+  ? new Date(dt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+  : null;
+
+const fmtDateTime = (dt) => dt
+  ? new Date(dt).toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+  : null;
+
+function Timeline({ order }) {
+  const events = [
+    { label: 'Sipariş geldi',    time: order.created_at,        icon: '🟢' },
+    { label: 'Tamamlandı',       time: order.completed_at,       icon: '✅' },
+    { label: 'Hesap istendi',    time: order.bill_requested_at,  icon: '🧾' },
+    { label: 'Masa kapatıldı',   time: order.closed_at,          icon: '🔒' },
+  ].filter(e => e.time);
+
+  return (
+    <div className="order-timeline">
+      {events.map((e, i) => (
+        <div key={i} className="timeline-event">
+          <span className="tl-icon">{e.icon}</span>
+          <span className="tl-label">{e.label}</span>
+          <span className="tl-time">{fmtTime(e.time)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EditModal({ order, token, menu, onClose, onSaved }) {
+  const [items, setItems] = useState(
+    order.items.map(i => ({
+      menu_item_id: i.menu_item_id,
+      name_override: i.name_override || null,
+      name: i.name,
+      quantity: i.quantity,
+      price_at_purchase: parseFloat(i.price_at_purchase),
+    }))
+  );
+  const [discount, setDiscount] = useState(parseFloat(order.discount) || 0);
+  const [extra, setExtra] = useState(parseFloat(order.extra_charge) || 0);
+  const [extraLabel, setExtraLabel] = useState(order.extra_charge_label || '');
+  const [addSearch, setAddSearch] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [closeConfirm, setCloseConfirm] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  const itemsTotal = items.reduce((s, i) => s + i.price_at_purchase * i.quantity, 0);
+  const finalTotal = Math.max(0, itemsTotal - discount + extra);
+
+  const allMenuItems = menu.flatMap(c => c.items || []);
+  const filtered = addSearch.trim()
+    ? allMenuItems.filter(m => m.name.toLowerCase().includes(addSearch.toLowerCase()))
+    : [];
+
+  const updateQty = (idx, qty) => {
+    if (qty < 1) return removeItem(idx);
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: qty } : it));
+  };
+
+  const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
+
+  const addMenuItem = (menuItem) => {
+    const exists = items.findIndex(i => i.menu_item_id === menuItem.id);
+    if (exists >= 0) {
+      setItems(prev => prev.map((it, i) => i === exists ? { ...it, quantity: it.quantity + 1 } : it));
+    } else {
+      setItems(prev => [...prev, {
+        menu_item_id: menuItem.id,
+        name_override: null,
+        name: menuItem.name,
+        quantity: 1,
+        price_at_purchase: parseFloat(menuItem.price),
+      }]);
+    }
+    setAddSearch('');
+  };
+
+  const addCustomItem = () => {
+    setItems(prev => [...prev, {
+      menu_item_id: null,
+      name_override: 'Özel Kalem',
+      name: 'Özel Kalem',
+      quantity: 1,
+      price_at_purchase: 0,
+    }]);
+  };
+
+  const updateCustomName = (idx, val) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, name_override: val, name: val } : it));
+
+  const updateCustomPrice = (idx, val) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, price_at_purchase: parseFloat(val) || 0 } : it));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await axios.put(`${BACKEND_URL}/api/admin/orders/${order.id}`, {
+        items, discount, extra_charge: extra, extra_charge_label: extraLabel,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      onSaved();
+      onClose();
+    } catch (err) {
+      alert('Kaydetme başarısız');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCloseTable = async () => {
+    setClosing(true);
+    try {
+      await axios.post(`${BACKEND_URL}/api/admin/table/${order.table_id}/close`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      alert('Masa kapatılamadı');
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  const handlePrint = () => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('tr-TR');
+    const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const itemsTotal = items.reduce((s, i) => s + i.price_at_purchase * i.quantity, 0);
+    const finalTotal = Math.max(0, itemsTotal - discount + extra);
+
+    const rows = items.map(i =>
+      `<tr><td>${i.quantity}x ${i.name}</td><td class="r">${(i.price_at_purchase * i.quantity).toFixed(2)} ₺</td></tr>`
+    ).join('');
+
+    const discountRow = discount > 0
+      ? `<tr class="adj"><td>İndirim</td><td class="r">− ${discount.toFixed(2)} ₺</td></tr>` : '';
+    const extraRow = extra > 0
+      ? `<tr class="adj"><td>${extraLabel || 'İlave Ücret'}</td><td class="r">+ ${extra.toFixed(2)} ₺</td></tr>` : '';
+
+    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<title>Adisyon — Masa ${order.table_number}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 13px; padding: 16px; max-width: 280px; color: #111; }
+  h1 { text-align: center; font-size: 17px; font-family: serif; margin-bottom: 2px; }
+  .sub { text-align: center; font-size: 11px; color: #555; margin-bottom: 10px; }
+  .divider { border: none; border-top: 1px dashed #999; margin: 8px 0; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 3px 0; vertical-align: top; }
+  td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
+  tr.adj td { color: #555; font-style: italic; }
+  .total-row td { font-weight: bold; font-size: 15px; border-top: 1px dashed #999; padding-top: 6px; margin-top: 4px; }
+  .footer { text-align: center; font-size: 11px; color: #888; margin-top: 12px; }
+  @media print { body { padding: 0; } }
+</style></head><body>
+<h1>Her Şey Ege'den</h1>
+<div class="sub">Kahvaltı &amp; Meze</div>
+<hr class="divider">
+<div class="meta">
+  <span>Masa ${order.table_number}</span>
+  <span>#${order.id}</span>
+  <span>${dateStr} ${timeStr}</span>
+</div>
+<hr class="divider">
+<table>
+  ${rows}
+  ${discountRow}
+  ${extraRow}
+  <tr class="total-row">
+    <td>TOPLAM</td>
+    <td class="r">${finalTotal.toFixed(2)} ₺</td>
+  </tr>
+</table>
+<div class="footer">Teşekkürler • Afiyet olsun</div>
+<script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }</script>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=400,height=600');
+    w.document.write(html);
+    w.document.close();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="edit-modal" onClick={e => e.stopPropagation()}>
+        <div className="edit-modal-header">
+          <h3>Sipariş #{order.id} — Masa {order.table_number} Düzenle</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="edit-modal-body">
+          {/* Ürün Listesi */}
+          <div className="edit-section">
+            <h4>Ürünler</h4>
+            {items.map((item, idx) => (
+              <div key={idx} className="edit-item-row">
+                {item.menu_item_id === null ? (
+                  <input
+                    className="edit-custom-name"
+                    value={item.name_override || ''}
+                    onChange={e => updateCustomName(idx, e.target.value)}
+                    placeholder="Kalem adı"
+                  />
+                ) : (
+                  <span className="edit-item-name">{item.name}</span>
+                )}
+                {item.menu_item_id === null ? (
+                  <input
+                    className="edit-custom-price"
+                    type="number"
+                    value={item.price_at_purchase}
+                    onChange={e => updateCustomPrice(idx, e.target.value)}
+                    min="0"
+                  />
+                ) : (
+                  <span className="edit-item-price">{item.price_at_purchase} ₺</span>
+                )}
+                <div className="edit-qty-ctrl">
+                  <button onClick={() => updateQty(idx, item.quantity - 1)}>−</button>
+                  <span>{item.quantity}</span>
+                  <button onClick={() => updateQty(idx, item.quantity + 1)}>+</button>
+                </div>
+                <span className="edit-item-subtotal">{(item.price_at_purchase * item.quantity).toFixed(2)} ₺</span>
+                <button className="edit-remove-btn" onClick={() => removeItem(idx)}>🗑</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Ürün Ekle */}
+          <div className="edit-section">
+            <h4>Ürün Ekle</h4>
+            <div className="edit-add-row">
+              <input
+                className="edit-search"
+                value={addSearch}
+                onChange={e => setAddSearch(e.target.value)}
+                placeholder="Menüden ara..."
+              />
+              <button className="edit-custom-btn" onClick={addCustomItem}>+ Özel Kalem</button>
+            </div>
+            {filtered.length > 0 && (
+              <div className="edit-search-results">
+                {filtered.slice(0, 8).map(m => (
+                  <button key={m.id} className="edit-search-item" onClick={() => addMenuItem(m)}>
+                    <span>{m.name}</span>
+                    <span>{m.price} ₺</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* İndirim & İlave */}
+          <div className="edit-section edit-adjustments">
+            <div className="edit-adj-row">
+              <label>İndirim (₺)</label>
+              <input type="number" min="0" value={discount}
+                onChange={e => setDiscount(parseFloat(e.target.value) || 0)} />
+            </div>
+            <div className="edit-adj-row">
+              <label>İlave Ücret (₺)</label>
+              <input type="number" min="0" value={extra}
+                onChange={e => setExtra(parseFloat(e.target.value) || 0)} />
+              <input className="edit-extra-label" value={extraLabel}
+                onChange={e => setExtraLabel(e.target.value)} placeholder="Açıklama" />
+            </div>
+          </div>
+
+          {/* Zaman Logu */}
+          <Timeline order={order} />
+
+          {/* Özet */}
+          <div className="edit-summary">
+            <div className="edit-summary-row">
+              <span>Ürünler Toplamı</span>
+              <span>{itemsTotal.toFixed(2)} ₺</span>
+            </div>
+            {discount > 0 && (
+              <div className="edit-summary-row discount">
+                <span>İndirim</span>
+                <span>− {discount.toFixed(2)} ₺</span>
+              </div>
+            )}
+            {extra > 0 && (
+              <div className="edit-summary-row extra">
+                <span>{extraLabel || 'İlave Ücret'}</span>
+                <span>+ {extra.toFixed(2)} ₺</span>
+              </div>
+            )}
+            <div className="edit-summary-row total">
+              <span>Genel Toplam</span>
+              <span>{finalTotal.toFixed(2)} ₺</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="edit-modal-footer">
+          <div className="edit-footer-left">
+            {closeConfirm ? (
+              <div className="close-table-confirm">
+                <span>Masayı kapatmak istiyor musunuz?</span>
+                <button className="close-table-yes" onClick={handleCloseTable} disabled={closing}>
+                  {closing ? '...' : 'Evet, Kapat'}
+                </button>
+                <button className="close-table-no" onClick={() => setCloseConfirm(false)}>İptal</button>
+              </div>
+            ) : (
+              <button className="close-table-trigger" onClick={() => setCloseConfirm(true)}>
+                🔒 Masayı Kapat
+              </button>
+            )}
+          </div>
+          <div className="edit-footer-right">
+            <button className="edit-print-btn" onClick={handlePrint}>🖨️ Yazdır</button>
+            <button className="edit-cancel-btn" onClick={onClose}>İptal</button>
+            <button className="edit-save-btn" onClick={handleSave} disabled={saving}>
+              {saving ? 'Kaydediliyor...' : 'Kaydet'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Orders({ token }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [expandedId, setExpandedId] = useState(null);
+  const [orderDetails, setOrderDetails] = useState({});
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [menu, setMenu] = useState([]);
+
+  useEffect(() => {
+    axios.get(`${BACKEND_URL}/api/menu`).then(r => setMenu(r.data)).catch(() => {});
+  }, []);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      let url = `${BACKEND_URL}/api/admin/orders`;
+      if (filter !== 'all') url += `?status=${filter}`;
+      const response = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+      setOrders(response.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, token]);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const toggleOrder = async (orderId) => {
+    if (expandedId === orderId) { setExpandedId(null); return; }
+    setExpandedId(orderId);
+    if (!orderDetails[orderId]) {
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/admin/orders/${orderId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setOrderDetails(prev => ({ ...prev, [orderId]: res.data }));
+      } catch (err) { console.error(err); }
+    }
+  };
+
+  const openEdit = async (e, orderId) => {
+    e.stopPropagation();
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/admin/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEditingOrder(res.data);
+    } catch (err) { alert('Sipariş detayı alınamadı'); }
+  };
+
+  const handleSaved = () => {
+    setOrderDetails({});
+    fetchOrders();
+  };
+
+  return (
+    <div className="orders">
+      <h1>Adisyonlar</h1>
+
+      <div className="filter-bar">
+        <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Tümü</button>
+        <button className={filter === 'pending' ? 'active' : ''} onClick={() => setFilter('pending')}>Hazırlanıyor</button>
+        <button className={filter === 'completed' ? 'active' : ''} onClick={() => setFilter('completed')}>Tamamlanan</button>
+      </div>
+
+      {loading ? (
+        <div>Yükleniyor...</div>
+      ) : orders.length === 0 ? (
+        <div>Sipariş bulunamadı</div>
+      ) : (
+        <div className="orders-list">
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Masa</th>
+                <th>Durum</th>
+                <th>Toplam</th>
+                <th>Ürün</th>
+                <th>Zaman</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map(order => (
+                <React.Fragment key={order.id}>
+                  <tr onClick={() => toggleOrder(order.id)} style={{ cursor: 'pointer' }}>
+                    <td>#{order.id}</td>
+                    <td>Masa {order.table_number}</td>
+                    <td>
+                      <span className={`status ${order.status}`}>
+                        {order.status === 'pending' ? 'Hazırlanıyor' : 'Tamamlandı'}
+                      </span>
+                    </td>
+                    <td>{parseFloat(order.total_price).toFixed(2)} ₺</td>
+                    <td>{order.item_count} ürün</td>
+                    <td>{new Date(order.created_at).toLocaleTimeString('tr-TR')}</td>
+                    <td>
+                      <button className="edit-order-btn" onClick={e => openEdit(e, order.id)}>
+                        ✏️ Düzenle
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedId === order.id && orderDetails[order.id] && (
+                    <tr className="detail-row">
+                      <td colSpan={7}>
+                        <div className="order-detail">
+                          <h4>Sipariş İçeriği</h4>
+                          <ul>
+                            {orderDetails[order.id].items.map((item, i) => (
+                              <li key={i}>
+                                <span>{item.name}</span>
+                                <span>x{item.quantity}</span>
+                                <span>{(item.price_at_purchase * item.quantity).toFixed(2)} ₺</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {parseFloat(orderDetails[order.id].discount) > 0 && (
+                            <p className="order-adj">İndirim: − {parseFloat(orderDetails[order.id].discount).toFixed(2)} ₺</p>
+                          )}
+                          {parseFloat(orderDetails[order.id].extra_charge) > 0 && (
+                            <p className="order-adj">
+                              {orderDetails[order.id].extra_charge_label || 'İlave'}: + {parseFloat(orderDetails[order.id].extra_charge).toFixed(2)} ₺
+                            </p>
+                          )}
+                          {orderDetails[order.id].customer_note && (
+                            <p className="order-note"><strong>Not:</strong> {orderDetails[order.id].customer_note}</p>
+                          )}
+                          <Timeline order={orderDetails[order.id]} />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="orders-totals">
+            <div className="total-card">
+              <span className="total-label">Toplam Sipariş</span>
+              <span className="total-value">{orders.length}</span>
+            </div>
+            <div className="total-card">
+              <span className="total-label">Toplam Ürün</span>
+              <span className="total-value">{orders.reduce((s, o) => s + Number(o.item_count), 0)}</span>
+            </div>
+            <div className="total-card highlight">
+              <span className="total-label">Toplam Tutar</span>
+              <span className="total-value">{orders.reduce((s, o) => s + Number(o.total_price), 0).toFixed(2)} ₺</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingOrder && (
+        <EditModal
+          order={editingOrder}
+          token={token}
+          menu={menu}
+          onClose={() => setEditingOrder(null)}
+          onSaved={handleSaved}
+        />
+      )}
+    </div>
+  );
+}
+
+export default Orders;
