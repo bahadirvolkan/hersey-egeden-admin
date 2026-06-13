@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
+import io from 'socket.io-client';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -14,6 +15,64 @@ const fmtDateTime = (dt) => {
   const d = toUTC(dt);
   return d ? d.toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
 };
+
+function autoPrint(order) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('tr-TR');
+  const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  const discount = parseFloat(order.discount) || 0;
+  const extra = parseFloat(order.extra_charge) || 0;
+  const itemsTotal = order.items.reduce((s, i) => s + i.price_at_purchase * i.quantity, 0);
+  const finalTotal = Math.max(0, itemsTotal - discount + extra);
+
+  const rows = order.items.map(i =>
+    `<tr><td>${i.quantity}x ${i.name}</td><td class="r">${(i.price_at_purchase * i.quantity).toFixed(2)} ₺</td></tr>`
+  ).join('');
+  const discountRow = discount > 0
+    ? `<tr class="adj"><td>İndirim</td><td class="r">− ${discount.toFixed(2)} ₺</td></tr>` : '';
+  const extraRow = extra > 0
+    ? `<tr class="adj"><td>${order.extra_charge_label || 'İlave Ücret'}</td><td class="r">+ ${extra.toFixed(2)} ₺</td></tr>` : '';
+  const noteRow = order.customer_note
+    ? `<p class="note">Not: ${order.customer_note}</p>` : '';
+
+  const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<title>Adisyon — Masa ${order.table_number}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 13px; padding: 16px; max-width: 280px; color: #111; }
+  h1 { text-align: center; font-size: 17px; font-family: serif; margin-bottom: 2px; }
+  .sub { text-align: center; font-size: 11px; color: #555; margin-bottom: 10px; }
+  .divider { border: none; border-top: 1px dashed #999; margin: 8px 0; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 3px 0; vertical-align: top; }
+  td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
+  tr.adj td { color: #555; font-style: italic; }
+  .total-row td { font-weight: bold; font-size: 15px; border-top: 1px dashed #999; padding-top: 6px; }
+  .note { font-size: 12px; margin-top: 8px; color: #444; }
+  .footer { text-align: center; font-size: 11px; color: #888; margin-top: 12px; }
+  @media print { body { padding: 0; } }
+</style></head><body>
+<h1>Her Şey Ege'den</h1>
+<div class="sub">Kahvaltı &amp; Meze</div>
+<hr class="divider">
+<div class="meta">
+  <span>Masa ${order.table_number}</span>
+  <span>#${order.id}</span>
+  <span>${dateStr} ${timeStr}</span>
+</div>
+<hr class="divider">
+<table>${rows}${discountRow}${extraRow}
+  <tr class="total-row"><td>TOPLAM</td><td class="r">${finalTotal.toFixed(2)} ₺</td></tr>
+</table>
+${noteRow}
+<div class="footer">Teşekkürler • Afiyet olsun</div>
+<script>window.onload = () => { window.print(); setTimeout(() => window.close(), 800); }</script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=400,height=600');
+  if (w) { w.document.write(html); w.document.close(); }
+}
 
 function Timeline({ order }) {
   const events = [
@@ -342,10 +401,33 @@ function Orders({ token }) {
   const [orderDetails, setOrderDetails] = useState({});
   const [editingOrder, setEditingOrder] = useState(null);
   const [menu, setMenu] = useState([]);
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(
+    () => localStorage.getItem('autoPrint') !== 'false'
+  );
+  const autoPrintRef = useRef(autoPrintEnabled);
+
+  useEffect(() => {
+    autoPrintRef.current = autoPrintEnabled;
+    localStorage.setItem('autoPrint', autoPrintEnabled);
+  }, [autoPrintEnabled]);
 
   useEffect(() => {
     axios.get(`${BACKEND_URL}/api/menu`).then(r => setMenu(r.data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const socket = io(BACKEND_URL);
+    socket.on('order:created', async ({ order_id }) => {
+      if (!autoPrintRef.current) return;
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/admin/orders/${order_id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        autoPrint(res.data);
+      } catch (err) { console.error('Auto-print failed:', err); }
+    });
+    return () => socket.close();
+  }, [token]);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -393,7 +475,17 @@ function Orders({ token }) {
 
   return (
     <div className="orders">
-      <h1>Adisyonlar</h1>
+      <div className="orders-header">
+        <h1>Adisyonlar</h1>
+        <label className="auto-print-toggle">
+          <input
+            type="checkbox"
+            checked={autoPrintEnabled}
+            onChange={e => setAutoPrintEnabled(e.target.checked)}
+          />
+          Otomatik yazdır
+        </label>
+      </div>
 
       <div className="filter-bar">
         <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Tümü</button>
