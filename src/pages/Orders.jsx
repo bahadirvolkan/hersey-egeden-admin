@@ -417,8 +417,10 @@ function Orders({ token }) {
 
   useEffect(() => {
     const socket = io(BACKEND_URL);
+    let ready = false;
+    socket.on('connect', () => { ready = true; });
     socket.on('order:created', async ({ order_id }) => {
-      if (!autoPrintRef.current) return;
+      if (!ready || !autoPrintRef.current) return;
       try {
         const res = await axios.get(`${BACKEND_URL}/api/admin/orders/${order_id}`, {
           headers: { Authorization: `Bearer ${token}` }
