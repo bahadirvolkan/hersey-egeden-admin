@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
+const PRINT_KEY = 'autoPrint';
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 function Settings({ token }) {
@@ -8,6 +10,14 @@ function Settings({ token }) {
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [autoPrint, setAutoPrint] = useState(
+    () => localStorage.getItem(PRINT_KEY) !== 'false'
+  );
+
+  const toggleAutoPrint = (val) => {
+    setAutoPrint(val);
+    localStorage.setItem(PRINT_KEY, val);
+  };
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -32,6 +42,25 @@ function Settings({ token }) {
   return (
     <div className="settings-page">
       <h1>Ayarlar</h1>
+
+      <div className="settings-card">
+        <h2>Yazıcı</h2>
+        <p className="settings-desc">Yeni sipariş geldiğinde admin paneli otomatik olarak yazdırma penceresini açar.</p>
+        <div className="settings-toggle-row">
+          <span>Otomatik yazdır</span>
+          <button
+            className={`settings-toggle-btn ${autoPrint ? 'on' : 'off'}`}
+            onClick={() => toggleAutoPrint(!autoPrint)}
+          >
+            {autoPrint ? 'Açık' : 'Kapalı'}
+          </button>
+        </div>
+        {autoPrint && (
+          <p className="settings-hint">
+            💡 Yazıcının bu bilgisayarda varsayılan yazıcı olarak tanımlı olduğundan emin olun.
+          </p>
+        )}
+      </div>
 
       <div className="settings-card">
         <h2>Şifre Değiştir</h2>

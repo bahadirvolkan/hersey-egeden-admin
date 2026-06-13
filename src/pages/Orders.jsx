@@ -475,17 +475,7 @@ function Orders({ token }) {
 
   return (
     <div className="orders">
-      <div className="orders-header">
-        <h1>Adisyonlar</h1>
-        <label className="auto-print-toggle">
-          <input
-            type="checkbox"
-            checked={autoPrintEnabled}
-            onChange={e => setAutoPrintEnabled(e.target.checked)}
-          />
-          Otomatik yazdır
-        </label>
-      </div>
+      <h1>Adisyonlar</h1>
 
       <div className="filter-bar">
         <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Tümü</button>
