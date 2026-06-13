@@ -3,13 +3,17 @@ import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-const fmtTime = (dt) => dt
-  ? new Date(dt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-  : null;
+const toUTC = (dt) => dt ? new Date(dt.includes('Z') ? dt : dt + 'Z') : null;
 
-const fmtDateTime = (dt) => dt
-  ? new Date(dt).toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
-  : null;
+const fmtTime = (dt) => {
+  const d = toUTC(dt);
+  return d ? d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null;
+};
+
+const fmtDateTime = (dt) => {
+  const d = toUTC(dt);
+  return d ? d.toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
+};
 
 function Timeline({ order }) {
   const events = [
@@ -428,7 +432,7 @@ function Orders({ token }) {
                     </td>
                     <td>{parseFloat(order.total_price).toFixed(2)} ₺</td>
                     <td>{order.item_count} ürün</td>
-                    <td>{new Date(order.created_at).toLocaleTimeString('tr-TR')}</td>
+                    <td>{fmtTime(order.created_at)}</td>
                     <td>
                       <button className="edit-order-btn" onClick={e => openEdit(e, order.id)}>
                         ✏️ Düzenle
