@@ -456,6 +456,7 @@ function Orders({ token }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString('sv-SE'));
   const [expandedId, setExpandedId] = useState(null);
   const [orderDetails, setOrderDetails] = useState({});
   const [editingOrder, setEditingOrder] = useState(null);
@@ -502,16 +503,19 @@ function Orders({ token }) {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      let url = `${BACKEND_URL}/api/admin/orders`;
-      if (filter !== 'all') url += `?status=${filter}`;
-      const response = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+      const params = new URLSearchParams();
+      if (filter !== 'all') params.set('status', filter);
+      params.set('date', selectedDate);
+      const response = await axios.get(`${BACKEND_URL}/api/admin/orders?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setOrders(response.data);
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
     }
-  }, [filter, token]);
+  }, [filter, token, selectedDate]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -545,7 +549,30 @@ function Orders({ token }) {
 
   return (
     <div className="orders">
-      <h1>Adisyonlar</h1>
+      <div className="orders-header">
+        <h1>Adisyonlar</h1>
+        <div className="date-nav">
+          <button onClick={() => {
+            const d = new Date(selectedDate);
+            d.setDate(d.getDate() - 1);
+            setSelectedDate(d.toLocaleDateString('sv-SE'));
+          }}>◀</button>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={e => setSelectedDate(e.target.value)}
+            className="date-input"
+          />
+          <button onClick={() => {
+            const d = new Date(selectedDate);
+            d.setDate(d.getDate() + 1);
+            setSelectedDate(d.toLocaleDateString('sv-SE'));
+          }}>▶</button>
+          <button className="today-btn" onClick={() => setSelectedDate(new Date().toLocaleDateString('sv-SE'))}>
+            Bugün
+          </button>
+        </div>
+      </div>
 
       <div className="filter-bar">
         <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Tümü</button>
