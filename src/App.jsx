@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Orders from './pages/Orders';
 import Menu from './pages/Menu';
 import Settings from './pages/Settings';
+import Reports from './pages/Reports';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -39,6 +40,7 @@ function App() {
             <li><Link to="/dashboard">📊 Dashboard</Link></li>
             <li><Link to="/orders">🧾 Adisyonlar</Link></li>
             <li><Link to="/menu">🍽️ Menü</Link></li>
+            <li><Link to="/reports">📈 Raporlar</Link></li>
             <li><Link to="/settings">⚙️ Ayarlar</Link></li>
             <li>
               <a href={`${FRONTEND_URL}/mutfak`} target="_blank" rel="noreferrer" className="kitchen-link">
@@ -55,6 +57,7 @@ function App() {
             <Route path="/orders" element={<Orders token={token} />} />
             <Route path="/menu" element={<Menu token={token} />} />
             <Route path="/settings" element={<Settings token={token} />} />
+            <Route path="/reports" element={<Reports token={token} />} />
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
         </div>

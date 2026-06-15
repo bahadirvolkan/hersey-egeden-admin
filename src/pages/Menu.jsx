@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -11,18 +11,22 @@ function Menu({ token }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
-  // Kategori ekle formu
   const [newCat, setNewCat] = useState({ name: '', image_url: '' });
   const [showAddCat, setShowAddCat] = useState(false);
 
-  // Ürün ekle formu (hangi kategoriye)
   const [addItemCatId, setAddItemCatId] = useState(null);
   const [newItem, setNewItem] = useState(emptyItem);
 
-  // Ürün düzenle
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [confirmModal, setConfirmModal] = useState(null);
+
+  // Drag state
+  const [dragCatId, setDragCatId] = useState(null);
+  const [dragOverCatId, setDragOverCatId] = useState(null);
+  const [dragItem, setDragItem] = useState(null); // {id, catId}
+  const [dragOverItemId, setDragOverItemId] = useState(null);
+  const isDraggingItem = useRef(false);
 
   useEffect(() => { fetchMenu(); }, []);
 
@@ -30,11 +34,9 @@ function Menu({ token }) {
     try {
       setLoading(true);
       const res = await axios.get(`${BACKEND_URL}/api/menu?all=1`);
-      // Kategorileri admin endpoint'ten al (is_available dahil)
       const catRes = await axios.get(`${BACKEND_URL}/api/admin/categories`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Her kategorinin ürünlerini menü verisinden eşleştir
       const menuData = res.data;
       const merged = catRes.data.map(cat => {
         const found = menuData.find(m => m.id === cat.id);
@@ -62,7 +64,6 @@ function Menu({ token }) {
     finally { setUploading(false); }
   };
 
-  // Kategori ekle
   const handleAddCategory = async () => {
     if (!newCat.name.trim()) return alert('Kategori adı gerekli');
     try {
@@ -75,7 +76,6 @@ function Menu({ token }) {
     } catch { alert('Kategori eklenemedi'); }
   };
 
-  // Kategori toggle
   const handleCatToggle = async (cat) => {
     await axios.put(`${BACKEND_URL}/api/admin/categories/${cat.id}`,
       { is_available: !cat.is_available },
@@ -84,7 +84,6 @@ function Menu({ token }) {
     fetchMenu();
   };
 
-  // Kategori sil
   const handleCatDelete = (catId) => {
     setConfirmModal({
       message: 'Kategori ve içindeki tüm ürünler silinecek. Emin misiniz?',
@@ -98,7 +97,6 @@ function Menu({ token }) {
     });
   };
 
-  // Ürün ekle
   const handleAddItem = async (catId) => {
     if (!newItem.name.trim() || !newItem.price) return alert('İsim ve fiyat gerekli');
     try {
@@ -112,7 +110,6 @@ function Menu({ token }) {
     } catch { alert('Ürün eklenemedi'); }
   };
 
-  // Ürün kaydet
   const handleSaveItem = async (itemId) => {
     try {
       await axios.put(`${BACKEND_URL}/api/admin/menu/${itemId}`, editData, {
@@ -123,7 +120,6 @@ function Menu({ token }) {
     } catch { alert('Güncelleme başarısız'); }
   };
 
-  // Ürün toggle
   const handleItemToggle = async (item) => {
     await axios.put(`${BACKEND_URL}/api/admin/menu/${item.id}`,
       { is_available: !item.is_available },
@@ -132,7 +128,6 @@ function Menu({ token }) {
     fetchMenu();
   };
 
-  // Ürün sil
   const handleDeleteItem = (itemId) => {
     setConfirmModal({
       message: 'Bu ürünü silmek istediğinize emin misiniz?',
@@ -144,6 +139,98 @@ function Menu({ token }) {
         fetchMenu();
       }
     });
+  };
+
+  // ─── Drag: Categories ───────────────────────────────────────────
+  const handleCatDragStart = (e, catId) => {
+    setDragCatId(catId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleCatDragEnd = () => {
+    setDragCatId(null);
+    setDragOverCatId(null);
+  };
+
+  const handleCatDragOver = (e, catId) => {
+    if (!dragCatId || isDraggingItem.current) return;
+    e.preventDefault();
+    setDragOverCatId(catId);
+  };
+
+  const handleCatDrop = (e, targetCatId) => {
+    if (!dragCatId || isDraggingItem.current) return;
+    e.preventDefault();
+    if (dragCatId === targetCatId) return;
+
+    const newCats = [...categories];
+    const fromIdx = newCats.findIndex(c => c.id === dragCatId);
+    const toIdx = newCats.findIndex(c => c.id === targetCatId);
+    const [moved] = newCats.splice(fromIdx, 1);
+    newCats.splice(toIdx, 0, moved);
+
+    setCategories(newCats);
+    setDragCatId(null);
+    setDragOverCatId(null);
+
+    axios.put(
+      `${BACKEND_URL}/api/admin/categories/reorder`,
+      { order: newCats.map((c, i) => ({ id: c.id, order: i + 1 })) },
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).catch(console.error);
+  };
+
+  // ─── Drag: Items ────────────────────────────────────────────────
+  const handleItemDragStart = (e, itemId, catId) => {
+    e.stopPropagation();
+    isDraggingItem.current = true;
+    setDragItem({ id: itemId, catId });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleItemDragEnd = (e) => {
+    e.stopPropagation();
+    isDraggingItem.current = false;
+    setDragItem(null);
+    setDragOverItemId(null);
+  };
+
+  const handleItemDragOver = (e, itemId) => {
+    if (!dragItem) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverItemId(itemId);
+  };
+
+  const handleItemDrop = (e, targetItemId, targetCatId) => {
+    if (!dragItem) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (dragItem.id === targetItemId || dragItem.catId !== targetCatId) return;
+
+    const catIdx = categories.findIndex(c => c.id === targetCatId);
+    if (catIdx === -1) return;
+
+    const newCats = [...categories];
+    const newItems = [...newCats[catIdx].items];
+    const fromIdx = newItems.findIndex(i => i.id === dragItem.id);
+    const toIdx = newItems.findIndex(i => i.id === targetItemId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const [moved] = newItems.splice(fromIdx, 1);
+    newItems.splice(toIdx, 0, moved);
+
+    newCats[catIdx] = { ...newCats[catIdx], items: newItems };
+    setCategories(newCats);
+    isDraggingItem.current = false;
+    setDragItem(null);
+    setDragOverItemId(null);
+
+    axios.put(
+      `${BACKEND_URL}/api/admin/menu/reorder`,
+      { order: newItems.map((item, i) => ({ id: item.id, order: i + 1 })) },
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).catch(console.error);
   };
 
   if (loading) return <div>Yükleniyor...</div>;
@@ -164,7 +251,6 @@ function Menu({ token }) {
         </button>
       </div>
 
-      {/* Kategori Ekle Formu */}
       {showAddCat && (
         <div className="add-cat-form">
           <input
@@ -194,13 +280,22 @@ function Menu({ token }) {
         </div>
       )}
 
-      {/* Kategoriler */}
       {categories.map(cat => (
-        <div key={cat.id} className={`category-admin ${!cat.is_available ? 'cat-disabled' : ''}`}>
-
-          {/* Kategori Başlık */}
+        <div
+          key={cat.id}
+          className={`category-admin ${!cat.is_available ? 'cat-disabled' : ''} ${dragOverCatId === cat.id && dragCatId !== cat.id ? 'drag-over' : ''}`}
+          onDragOver={(e) => handleCatDragOver(e, cat.id)}
+          onDrop={(e) => handleCatDrop(e, cat.id)}
+        >
           <div className="category-header">
             <div className="category-title">
+              <span
+                className="drag-handle"
+                draggable
+                onDragStart={(e) => handleCatDragStart(e, cat.id)}
+                onDragEnd={handleCatDragEnd}
+                title="Sürükleyerek sırala"
+              >⠿</span>
               {cat.image_url && (
                 <img src={`${BACKEND_URL}${cat.image_url}`} alt="" className="cat-img" />
               )}
@@ -217,10 +312,14 @@ function Menu({ token }) {
             </div>
           </div>
 
-          {/* Ürünler */}
           <div className="items-grid">
             {cat.items && cat.items.map(item => (
-              <div key={item.id} className={`item-admin ${!item.is_available ? 'item-disabled' : ''}`}>
+              <div
+                key={item.id}
+                className={`item-admin ${!item.is_available ? 'item-disabled' : ''} ${dragOverItemId === item.id && dragItem?.id !== item.id ? 'drag-over' : ''}`}
+                onDragOver={(e) => handleItemDragOver(e, item.id)}
+                onDrop={(e) => handleItemDrop(e, item.id, cat.id)}
+              >
                 {editingId === item.id ? (
                   <div className="edit-form">
                     <input type="text" value={editData.name || ''} placeholder="İsim"
@@ -255,6 +354,13 @@ function Menu({ token }) {
                   </div>
                 ) : (
                   <>
+                    <span
+                      className="drag-handle item-drag-handle"
+                      draggable
+                      onDragStart={(e) => handleItemDragStart(e, item.id, cat.id)}
+                      onDragEnd={handleItemDragEnd}
+                      title="Sürükleyerek sırala"
+                    >⠿</span>
                     {item.image_url && (
                       <img src={`${BACKEND_URL}${item.image_url}`} alt={item.name} className="item-img" />
                     )}
@@ -276,7 +382,6 @@ function Menu({ token }) {
               </div>
             ))}
 
-            {/* Ürün Ekle Kartı */}
             {addItemCatId === cat.id ? (
               <div className="item-admin add-item-form">
                 <input type="text" value={newItem.name} placeholder="Ürün adı"
