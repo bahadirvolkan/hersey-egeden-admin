@@ -488,7 +488,7 @@ function Orders({ token }) {
         autoPrint(res.data);
       } catch (err) { console.error('Auto-print failed:', err); }
     });
-    socket.on('bill:requested', async ({ table_id }) => {
+    socket.on('table:closed', async ({ table_id }) => {
       if (!ready || !autoPrintRef.current) return;
       try {
         const res = await axios.get(`${BACKEND_URL}/api/admin/table/${table_id}/bill`, {
