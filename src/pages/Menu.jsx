@@ -27,8 +27,39 @@ function Menu({ token }) {
   const [dragItem, setDragItem] = useState(null); // {id, catId}
   const [dragOverItemId, setDragOverItemId] = useState(null);
   const isDraggingItem = useRef(false);
+  const scrollInterval = useRef(null);
 
   useEffect(() => { fetchMenu(); }, []);
+
+  useEffect(() => {
+    const THRESHOLD = 80;
+    const MAX_SPEED = 12;
+
+    const onDragOver = (e) => {
+      if (scrollInterval.current) clearInterval(scrollInterval.current);
+      if (e.clientY < THRESHOLD) {
+        const speed = Math.round(MAX_SPEED * (1 - e.clientY / THRESHOLD));
+        scrollInterval.current = setInterval(() => window.scrollBy(0, -speed), 16);
+      } else if (e.clientY > window.innerHeight - THRESHOLD) {
+        const speed = Math.round(MAX_SPEED * (1 - (window.innerHeight - e.clientY) / THRESHOLD));
+        scrollInterval.current = setInterval(() => window.scrollBy(0, speed), 16);
+      }
+    };
+
+    const stopScroll = () => {
+      if (scrollInterval.current) { clearInterval(scrollInterval.current); scrollInterval.current = null; }
+    };
+
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragend', stopScroll);
+    window.addEventListener('drop', stopScroll);
+    return () => {
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('dragend', stopScroll);
+      window.removeEventListener('drop', stopScroll);
+      stopScroll();
+    };
+  }, []);
 
   const fetchMenu = async () => {
     try {
