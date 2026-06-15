@@ -40,19 +40,20 @@ function autoPrintBill({ table_number, orders }) {
   ).join('');
 
   const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <title>Hesap — Masa ${table_number}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 13px; padding: 16px; max-width: 280px; color: #111; }
-  h1 { text-align: center; font-size: 17px; font-family: serif; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 11px; color: #555; margin-bottom: 10px; }
-  .divider { border: none; border-top: 1px dashed #999; margin: 8px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
+  body { font-family: 'Inter', Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
+  h1 { text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .divider { border: none; border-top: 1px dashed #bbb; margin: 10px 0; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 10px; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 3px 0; vertical-align: top; }
+  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
   td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
-  .total-row td { font-weight: bold; font-size: 15px; border-top: 1px dashed #999; padding-top: 6px; }
-  .footer { text-align: center; font-size: 11px; color: #888; margin-top: 12px; }
+  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
+  .footer { text-align: center; font-size: 11px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
   @media print { body { padding: 0; } }
 </style></head><body>
 <h1>Her Şey Ege'den</h1>
@@ -60,7 +61,6 @@ function autoPrintBill({ table_number, orders }) {
 <hr class="divider">
 <div class="meta">
   <span>Masa ${table_number}</span>
-  <span>HESAP</span>
   <span>${dateStr} ${timeStr}</span>
 </div>
 <hr class="divider">
@@ -95,21 +95,22 @@ function autoPrint(order) {
     ? `<p class="note">Not: ${order.customer_note}</p>` : '';
 
   const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <title>Adisyon — Masa ${order.table_number}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 13px; padding: 16px; max-width: 280px; color: #111; }
-  h1 { text-align: center; font-size: 17px; font-family: serif; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 11px; color: #555; margin-bottom: 10px; }
-  .divider { border: none; border-top: 1px dashed #999; margin: 8px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
+  body { font-family: 'Inter', Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
+  h1 { text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .divider { border: none; border-top: 1px dashed #bbb; margin: 10px 0; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 10px; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 3px 0; vertical-align: top; }
+  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
   td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
-  tr.adj td { color: #555; font-style: italic; }
-  .total-row td { font-weight: bold; font-size: 15px; border-top: 1px dashed #999; padding-top: 6px; }
-  .note { font-size: 12px; margin-top: 8px; color: #444; }
-  .footer { text-align: center; font-size: 11px; color: #888; margin-top: 12px; }
+  tr.adj td { color: #666; font-style: italic; }
+  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
+  .note { font-size: 12px; margin-top: 10px; color: #444; }
+  .footer { text-align: center; font-size: 11px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
   @media print { body { padding: 0; } }
 </style></head><body>
 <h1>Her Şey Ege'den</h1>
