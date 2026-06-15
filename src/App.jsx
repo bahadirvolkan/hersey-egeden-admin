@@ -42,6 +42,11 @@ function App() {
             <li><Link to="/menu">🍽️ Menü</Link></li>
             <li><Link to="/reports">📈 Raporlar</Link></li>
             <li><Link to="/settings">⚙️ Ayarlar</Link></li>
+            <li>
+              <a href="https://www.herseyegeden.com.tr/mutfak" target="_blank" rel="noreferrer" className="kitchen-link">
+                👨‍🍳 Mutfak
+              </a>
+            </li>
 <li><button onClick={handleLogout} className="logout-btn">🚪 Çıkış</button></li>
           </ul>
         </nav>
