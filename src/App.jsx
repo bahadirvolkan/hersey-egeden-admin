@@ -42,12 +42,7 @@ function App() {
             <li><Link to="/menu">🍽️ Menü</Link></li>
             <li><Link to="/reports">📈 Raporlar</Link></li>
             <li><Link to="/settings">⚙️ Ayarlar</Link></li>
-            <li>
-              <a href={`${FRONTEND_URL}/mutfak`} target="_blank" rel="noreferrer" className="kitchen-link">
-                👨‍🍳 Mutfak Ekranı ↗
-              </a>
-            </li>
-            <li><button onClick={handleLogout} className="logout-btn">🚪 Çıkış</button></li>
+<li><button onClick={handleLogout} className="logout-btn">🚪 Çıkış</button></li>
           </ul>
         </nav>
 
