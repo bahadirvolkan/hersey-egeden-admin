@@ -172,6 +172,10 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const itemsTotal = items.reduce((s, i) => s + i.price_at_purchase * i.quantity, 0);
   const finalTotal = Math.max(0, itemsTotal - discount + extra);
@@ -247,6 +251,23 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
       alert('Masa kapatılamadı');
     } finally {
       setClosing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await axios.delete(`${BACKEND_URL}/api/admin/orders/${order.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { password: deletePassword }
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || 'Silinemedi');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -441,6 +462,9 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
             )}
           </div>
           <div className="edit-footer-right">
+            <button className="edit-delete-btn" onClick={() => { setDeleteConfirm(true); setDeletePassword(''); setDeleteError(''); }}>
+              🗑️ Sil
+            </button>
             <button className="edit-print-btn" onClick={handlePrint}>🖨️ Yazdır</button>
             <button className="edit-cancel-btn" onClick={onClose}>İptal</button>
             <button className="edit-save-btn" onClick={handleSave} disabled={saving}>
@@ -449,6 +473,30 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
           </div>
         </div>
       </div>
+
+      {deleteConfirm && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirm(false)}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <h3>Adisyon #{order.id} Silinecek</h3>
+            <p>Bu işlem geri alınamaz. Onaylamak için admin şifresini girin.</p>
+            <input
+              type="password"
+              placeholder="Admin şifresi"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleDelete()}
+              autoFocus
+            />
+            {deleteError && <p className="delete-error">{deleteError}</p>}
+            <div className="delete-confirm-actions">
+              <button onClick={() => setDeleteConfirm(false)}>İptal</button>
+              <button className="delete-confirm-ok" onClick={handleDelete} disabled={deleting}>
+                {deleting ? 'Siliniyor...' : 'Sil'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
