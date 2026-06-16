@@ -28,6 +28,11 @@ function Menu({ token }) {
   const [dragOverItemId, setDragOverItemId] = useState(null);
   const isDraggingItem = useRef(false);
   const scrollInterval = useRef(null);
+  const [collapsedCats, setCollapsedCats] = useState({});
+
+  const toggleCollapse = (catId) => {
+    setCollapsedCats(prev => ({ ...prev, [catId]: !prev[catId] }));
+  };
 
   useEffect(() => { fetchMenu(); }, []);
 
@@ -405,6 +410,13 @@ function Menu({ token }) {
                 <img src={`${BACKEND_URL}${cat.image_url}`} alt="" className="cat-img" />
               )}
               <h3>{cat.name}</h3>
+              <button
+                className="collapse-btn"
+                onClick={() => toggleCollapse(cat.id)}
+                title={collapsedCats[cat.id] ? 'Ürünleri göster' : 'Ürünleri gizle'}
+              >
+                {collapsedCats[cat.id] ? '▸' : '▾'}
+              </button>
             </div>
             <div className="category-actions">
               <button
@@ -417,6 +429,7 @@ function Menu({ token }) {
             </div>
           </div>
 
+          {!collapsedCats[cat.id] && (
           <div className="items-grid">
             {cat.items && cat.items.map(item => (
               <div
@@ -524,6 +537,7 @@ function Menu({ token }) {
               </div>
             )}
           </div>
+          )}
         </div>
       ))}
     </div>

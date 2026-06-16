@@ -817,6 +817,20 @@ table tbody tr:hover {
   margin: 0;
 }
 
+.collapse-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #667eea;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.collapse-btn:hover {
+  opacity: 0.7;
+}
+
 .category-actions {
   display: flex;
   gap: 8px;
