@@ -461,12 +461,41 @@ table tbody tr:hover {
   gap: 15px;
   font-size: 14px;
   color: #444;
+  align-items: center;
+}
+
+.detail-item-row label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.detail-item-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .order-detail ul li span:last-child {
   margin-left: auto;
   font-weight: bold;
   color: #667eea;
+}
+
+.partial-bill-btn {
+  margin-top: 10px;
+  padding: 7px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.partial-bill-btn:hover {
+  opacity: 0.85;
 }
 
 .order-note {

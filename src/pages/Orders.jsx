@@ -509,6 +509,7 @@ function Orders({ token }) {
   const [orderDetails, setOrderDetails] = useState({});
   const [editingOrder, setEditingOrder] = useState(null);
   const [menu, setMenu] = useState([]);
+  const [partialSelections, setPartialSelections] = useState({});
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(
     () => localStorage.getItem('autoPrint') !== 'false'
   );
@@ -593,6 +594,64 @@ function Orders({ token }) {
   const handleSaved = () => {
     setOrderDetails({});
     fetchOrders();
+  };
+
+  const togglePartialItem = (orderId, idx, e) => {
+    e.stopPropagation();
+    setPartialSelections(prev => {
+      const current = new Set(prev[orderId] || []);
+      if (current.has(idx)) current.delete(idx); else current.add(idx);
+      return { ...prev, [orderId]: new Set(current) };
+    });
+  };
+
+  const printPartialBill = (orderId) => {
+    const order = orderDetails[orderId];
+    const selected = partialSelections[orderId] || new Set();
+    const items = order.items.filter((_, i) => selected.has(i));
+    if (!items.length) return;
+    const total = items.reduce((s, i) => s + parseFloat(i.price_at_purchase) * i.quantity, 0);
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('tr-TR');
+    const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const rows = items.map(i =>
+      `<tr><td>${i.quantity}x ${i.name}</td><td class="r">${(parseFloat(i.price_at_purchase) * i.quantity).toFixed(2)} ₺</td></tr>`
+    ).join('');
+    const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<title>Kısmi Hesap — Masa ${order.table_number}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
+  h1 { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 4px; letter-spacing: 1px; text-transform: uppercase; }
+  .partial-tag { text-align: center; font-size: 11px; color: #888; margin-bottom: 12px; }
+  .divider { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
+  td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
+  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
+  .footer { text-align: center; font-size: 11px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
+  @media print { body { padding: 0; } }
+</style></head><body>
+<h1>Her Şey Ege'den</h1>
+<div class="sub">Kahvaltı &amp; Meze</div>
+<div class="partial-tag">Kısmi Hesap</div>
+<hr class="divider">
+<div class="meta">
+  <span>Masa ${order.table_number}</span>
+  <span>#${orderId}</span>
+  <span>${dateStr} ${timeStr}</span>
+</div>
+<hr class="divider">
+<table>${rows}
+  <tr class="total-row"><td>TOPLAM</td><td class="r">${total.toFixed(2)} ₺</td></tr>
+</table>
+<div class="footer">Teşekkürler • Afiyet olsun</div>
+<script>window.onload = () => { window.print(); setTimeout(() => window.close(), 800); }</script>
+</body></html>`;
+    const w = window.open('', '_blank', 'width=400,height=600');
+    if (w) { w.document.write(html); w.document.close(); }
   };
 
   const exportExcel = async () => {
@@ -706,13 +765,28 @@ function Orders({ token }) {
                           <h4>Sipariş İçeriği</h4>
                           <ul>
                             {orderDetails[order.id].items.map((item, i) => (
-                              <li key={i}>
+                              <li key={i} className="detail-item-row">
+                                <label onClick={e => e.stopPropagation()}>
+                                  <input
+                                    type="checkbox"
+                                    checked={(partialSelections[order.id] || new Set()).has(i)}
+                                    onChange={e => togglePartialItem(order.id, i, e)}
+                                  />
+                                </label>
                                 <span>{item.name}</span>
                                 <span>x{item.quantity}</span>
                                 <span>{(item.price_at_purchase * item.quantity).toFixed(2)} ₺</span>
                               </li>
                             ))}
                           </ul>
+                          {(partialSelections[order.id]?.size > 0) && (
+                            <button
+                              className="partial-bill-btn"
+                              onClick={e => { e.stopPropagation(); printPartialBill(order.id); }}
+                            >
+                              🧾 Kısmi Hesap ({partialSelections[order.id].size} ürün)
+                            </button>
+                          )}
                           {parseFloat(orderDetails[order.id].discount) > 0 && (
                             <p className="order-adj">İndirim: − {parseFloat(orderDetails[order.id].discount).toFixed(2)} ₺</p>
                           )}
