@@ -385,7 +385,7 @@ function Menu({ token }) {
         <div
           key={cat.id}
           data-cat-id={cat.id}
-          className={`category-admin ${!cat.is_available ? 'cat-disabled' : ''} ${dragOverCatId === cat.id && dragCatId !== cat.id ? 'drag-over' : ''}`}
+          className={`category-admin ${!cat.is_available ? 'cat-disabled' : ''} ${dragOverCatId === cat.id && dragCatId !== cat.id ? 'drag-over' : ''} ${dragCatId === cat.id ? 'being-dragged' : ''}`}
           onDragOver={(e) => handleCatDragOver(e, cat.id)}
           onDrop={(e) => handleCatDrop(e, cat.id)}
         >
@@ -422,7 +422,7 @@ function Menu({ token }) {
               <div
                 key={item.id}
                 data-item-id={item.id}
-                className={`item-admin ${!item.is_available ? 'item-disabled' : ''} ${dragOverItemId === item.id && dragItem?.id !== item.id ? 'drag-over' : ''}`}
+                className={`item-admin ${!item.is_available ? 'item-disabled' : ''} ${dragOverItemId === item.id && dragItem?.id !== item.id ? 'drag-over' : ''} ${dragItem?.id === item.id ? 'being-dragged' : ''}`}
                 onDragOver={(e) => handleItemDragOver(e, item.id)}
                 onDrop={(e) => handleItemDrop(e, item.id, cat.id)}
               >

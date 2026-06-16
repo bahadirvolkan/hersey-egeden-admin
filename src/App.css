@@ -841,6 +841,10 @@ table tbody tr:hover {
   cursor: grabbing;
 }
 
+.being-dragged {
+  opacity: 0.4;
+}
+
 .item-drag-handle {
   position: absolute;
   top: 8px;
