@@ -618,7 +618,7 @@ table tbody tr:hover {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .hamburger {
     display: block;
     position: fixed;
@@ -638,7 +638,10 @@ table tbody tr:hover {
   .nav-overlay {
     display: block;
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: rgba(0,0,0,0.45);
     z-index: 1000;
   }
@@ -660,6 +663,7 @@ table tbody tr:hover {
     margin-left: 0;
     padding: 15px;
     padding-top: 55px;
+    min-height: 100vh;
   }
 
   .report-cards {
@@ -671,12 +675,20 @@ table tbody tr:hover {
   }
 
   table {
-    font-size: 14px;
+    font-size: 13px;
+    width: 100%;
   }
 
   table th,
   table td {
-    padding: 10px;
+    padding: 8px 6px;
+    white-space: nowrap;
+  }
+
+  .orders-list,
+  .report-block {
+    overflow-x: auto;
+    width: 100%;
   }
 }
 
