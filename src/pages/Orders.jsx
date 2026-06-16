@@ -599,24 +599,41 @@ function Orders({ token }) {
   const togglePartialItem = (orderId, idx, e) => {
     e.stopPropagation();
     setPartialSelections(prev => {
-      const current = new Set(prev[orderId] || []);
-      if (current.has(idx)) current.delete(idx); else current.add(idx);
-      return { ...prev, [orderId]: new Set(current) };
+      const current = { ...(prev[orderId] || {}) };
+      if (current[idx] > 0) delete current[idx];
+      else current[idx] = orderDetails[orderId].items[idx].quantity;
+      return { ...prev, [orderId]: current };
     });
   };
 
-  const printPartialBill = (orderId) => {
+  const adjustPartialQty = (orderId, idx, delta, e) => {
+    e.stopPropagation();
+    setPartialSelections(prev => {
+      const current = { ...(prev[orderId] || {}) };
+      const maxQty = orderDetails[orderId].items[idx].quantity;
+      const newQty = Math.max(0, Math.min(maxQty, (current[idx] || 0) + delta));
+      if (newQty === 0) delete current[idx];
+      else current[idx] = newQty;
+      return { ...prev, [orderId]: current };
+    });
+  };
+
+  const printPartialBill = async (orderId) => {
     const order = orderDetails[orderId];
-    const selected = partialSelections[orderId] || new Set();
-    const items = order.items.filter((_, i) => selected.has(i));
-    if (!items.length) return;
-    const total = items.reduce((s, i) => s + parseFloat(i.price_at_purchase) * i.quantity, 0);
+    const selections = partialSelections[orderId] || {};
+    const selectedItems = order.items
+      .map((item, i) => ({ ...item, selectedQty: selections[i] || 0 }))
+      .filter(item => item.selectedQty > 0);
+    if (!selectedItems.length) return;
+
+    const total = selectedItems.reduce((s, i) => s + parseFloat(i.price_at_purchase) * i.selectedQty, 0);
     const now = new Date();
     const dateStr = now.toLocaleDateString('tr-TR');
     const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-    const rows = items.map(i =>
-      `<tr><td>${i.quantity}x ${i.name}</td><td class="r">${(parseFloat(i.price_at_purchase) * i.quantity).toFixed(2)} ₺</td></tr>`
+    const rows = selectedItems.map(i =>
+      `<tr><td>${i.selectedQty}x ${i.name}</td><td class="r">${(parseFloat(i.price_at_purchase) * i.selectedQty).toFixed(2)} ₺</td></tr>`
     ).join('');
+
     const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
 <title>Kısmi Hesap — Masa ${order.table_number}</title>
 <style>
@@ -652,6 +669,32 @@ function Orders({ token }) {
 </body></html>`;
     const w = window.open('', '_blank', 'width=400,height=600');
     if (w) { w.document.write(html); w.document.close(); }
+
+    // Seçilen miktarları orijinal siparişten düş
+    const remainingItems = order.items
+      .map((item, i) => ({ ...item, quantity: item.quantity - (selections[i] || 0) }))
+      .filter(item => item.quantity > 0);
+
+    try {
+      await axios.put(`${BACKEND_URL}/api/admin/orders/${orderId}`, {
+        items: remainingItems.map(item => ({
+          menu_item_id: item.menu_item_id || null,
+          quantity: item.quantity,
+          price_at_purchase: item.price_at_purchase,
+          name_override: item.name_override || null,
+        })),
+        discount: order.discount,
+        extra_charge: order.extra_charge,
+        extra_charge_label: order.extra_charge_label,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      const res = await axios.get(`${BACKEND_URL}/api/admin/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOrderDetails(prev => ({ ...prev, [orderId]: res.data }));
+      setPartialSelections(prev => { const u = { ...prev }; delete u[orderId]; return u; });
+      fetchOrders();
+    } catch (err) { console.error('Kısmi düşme hatası:', err); }
   };
 
   const exportExcel = async () => {
@@ -764,27 +807,39 @@ function Orders({ token }) {
                         <div className="order-detail">
                           <h4>Sipariş İçeriği</h4>
                           <ul>
-                            {orderDetails[order.id].items.map((item, i) => (
-                              <li key={i} className="detail-item-row">
-                                <label onClick={e => e.stopPropagation()}>
-                                  <input
-                                    type="checkbox"
-                                    checked={(partialSelections[order.id] || new Set()).has(i)}
-                                    onChange={e => togglePartialItem(order.id, i, e)}
-                                  />
-                                </label>
-                                <span>{item.name}</span>
-                                <span>x{item.quantity}</span>
-                                <span>{(item.price_at_purchase * item.quantity).toFixed(2)} ₺</span>
-                              </li>
-                            ))}
+                            {orderDetails[order.id].items.map((item, i) => {
+                              const sel = partialSelections[order.id] || {};
+                              const selQty = sel[i] || 0;
+                              return (
+                                <li key={i} className="detail-item-row">
+                                  <label onClick={e => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selQty > 0}
+                                      onChange={e => togglePartialItem(order.id, i, e)}
+                                    />
+                                  </label>
+                                  <span>{item.name}</span>
+                                  {selQty > 0 && item.quantity > 1 ? (
+                                    <span className="partial-qty-ctrl" onClick={e => e.stopPropagation()}>
+                                      <button onClick={e => adjustPartialQty(order.id, i, -1, e)}>−</button>
+                                      <span>{selQty}/{item.quantity}</span>
+                                      <button onClick={e => adjustPartialQty(order.id, i, 1, e)}>+</button>
+                                    </span>
+                                  ) : (
+                                    <span>x{item.quantity}</span>
+                                  )}
+                                  <span>{(item.price_at_purchase * (selQty > 0 ? selQty : item.quantity)).toFixed(2)} ₺</span>
+                                </li>
+                              );
+                            })}
                           </ul>
-                          {(partialSelections[order.id]?.size > 0) && (
+                          {Object.values(partialSelections[order.id] || {}).some(q => q > 0) && (
                             <button
                               className="partial-bill-btn"
                               onClick={e => { e.stopPropagation(); printPartialBill(order.id); }}
                             >
-                              🧾 Kısmi Hesap ({partialSelections[order.id].size} ürün)
+                              🧾 Kısmi Hesap
                             </button>
                           )}
                           {parseFloat(orderDetails[order.id].discount) > 0 && (
