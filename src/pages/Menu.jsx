@@ -31,35 +31,49 @@ function Menu({ token }) {
 
   useEffect(() => { fetchMenu(); }, []);
 
-  useEffect(() => {
+  const checkAutoScroll = (clientY) => {
     const THRESHOLD = 80;
     const MAX_SPEED = 12;
+    if (scrollInterval.current) clearInterval(scrollInterval.current);
+    if (clientY < THRESHOLD) {
+      const speed = Math.round(MAX_SPEED * (1 - clientY / THRESHOLD));
+      scrollInterval.current = setInterval(() => window.scrollBy(0, -speed), 16);
+    } else if (clientY > window.innerHeight - THRESHOLD) {
+      const speed = Math.round(MAX_SPEED * (1 - (window.innerHeight - clientY) / THRESHOLD));
+      scrollInterval.current = setInterval(() => window.scrollBy(0, speed), 16);
+    }
+  };
 
-    const onDragOver = (e) => {
-      if (scrollInterval.current) clearInterval(scrollInterval.current);
-      if (e.clientY < THRESHOLD) {
-        const speed = Math.round(MAX_SPEED * (1 - e.clientY / THRESHOLD));
-        scrollInterval.current = setInterval(() => window.scrollBy(0, -speed), 16);
-      } else if (e.clientY > window.innerHeight - THRESHOLD) {
-        const speed = Math.round(MAX_SPEED * (1 - (window.innerHeight - e.clientY) / THRESHOLD));
-        scrollInterval.current = setInterval(() => window.scrollBy(0, speed), 16);
-      }
-    };
+  const stopAutoScroll = () => {
+    if (scrollInterval.current) { clearInterval(scrollInterval.current); scrollInterval.current = null; }
+  };
 
-    const stopScroll = () => {
-      if (scrollInterval.current) { clearInterval(scrollInterval.current); scrollInterval.current = null; }
-    };
-
+  useEffect(() => {
+    const onDragOver = (e) => checkAutoScroll(e.clientY);
     window.addEventListener('dragover', onDragOver);
-    window.addEventListener('dragend', stopScroll);
-    window.addEventListener('drop', stopScroll);
+    window.addEventListener('dragend', stopAutoScroll);
+    window.addEventListener('drop', stopAutoScroll);
     return () => {
       window.removeEventListener('dragover', onDragOver);
-      window.removeEventListener('dragend', stopScroll);
-      window.removeEventListener('drop', stopScroll);
-      stopScroll();
+      window.removeEventListener('dragend', stopAutoScroll);
+      window.removeEventListener('drop', stopAutoScroll);
+      stopAutoScroll();
     };
   }, []);
+
+  const findCatIdFromPoint = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const catEl = el && el.closest('.category-admin');
+    return catEl ? Number(catEl.dataset.catId) : null;
+  };
+
+  const findItemFromPoint = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const itemEl = el && el.closest('.item-admin[data-item-id]');
+    if (!itemEl) return null;
+    const catEl = itemEl.closest('.category-admin');
+    return { id: Number(itemEl.dataset.itemId), catId: catEl ? Number(catEl.dataset.catId) : null };
+  };
 
   const fetchMenu = async () => {
     try {
@@ -173,6 +187,24 @@ function Menu({ token }) {
   };
 
   // ─── Drag: Categories ───────────────────────────────────────────
+  const reorderCategories = (fromCatId, targetCatId) => {
+    if (fromCatId === targetCatId) return;
+    const newCats = [...categories];
+    const fromIdx = newCats.findIndex(c => c.id === fromCatId);
+    const toIdx = newCats.findIndex(c => c.id === targetCatId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = newCats.splice(fromIdx, 1);
+    newCats.splice(toIdx, 0, moved);
+
+    setCategories(newCats);
+
+    axios.put(
+      `${BACKEND_URL}/api/admin/categories/reorder`,
+      { order: newCats.map((c, i) => ({ id: c.id, order: i + 1 })) },
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).catch(console.error);
+  };
+
   const handleCatDragStart = (e, catId) => {
     setDragCatId(catId);
     e.dataTransfer.effectAllowed = 'move';
@@ -192,26 +224,59 @@ function Menu({ token }) {
   const handleCatDrop = (e, targetCatId) => {
     if (!dragCatId || isDraggingItem.current) return;
     e.preventDefault();
-    if (dragCatId === targetCatId) return;
-
-    const newCats = [...categories];
-    const fromIdx = newCats.findIndex(c => c.id === dragCatId);
-    const toIdx = newCats.findIndex(c => c.id === targetCatId);
-    const [moved] = newCats.splice(fromIdx, 1);
-    newCats.splice(toIdx, 0, moved);
-
-    setCategories(newCats);
+    reorderCategories(dragCatId, targetCatId);
     setDragCatId(null);
     setDragOverCatId(null);
+  };
+
+  const handleCatTouchStart = (e, catId) => {
+    setDragCatId(catId);
+  };
+
+  const handleCatTouchMove = (e) => {
+    if (!dragCatId) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    checkAutoScroll(t.clientY);
+    const targetCatId = findCatIdFromPoint(t.clientX, t.clientY);
+    if (targetCatId != null) setDragOverCatId(targetCatId);
+  };
+
+  const handleCatTouchEnd = (e) => {
+    if (!dragCatId) return;
+    const t = e.changedTouches[0];
+    const targetCatId = findCatIdFromPoint(t.clientX, t.clientY);
+    if (targetCatId != null) reorderCategories(dragCatId, targetCatId);
+    setDragCatId(null);
+    setDragOverCatId(null);
+    stopAutoScroll();
+  };
+
+  // ─── Drag: Items ────────────────────────────────────────────────
+  const reorderItems = (fromItem, targetItemId, targetCatId) => {
+    if (!fromItem || fromItem.id === targetItemId || fromItem.catId !== targetCatId) return;
+    const catIdx = categories.findIndex(c => c.id === targetCatId);
+    if (catIdx === -1) return;
+
+    const newCats = [...categories];
+    const newItems = [...newCats[catIdx].items];
+    const fromIdx = newItems.findIndex(i => i.id === fromItem.id);
+    const toIdx = newItems.findIndex(i => i.id === targetItemId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const [moved] = newItems.splice(fromIdx, 1);
+    newItems.splice(toIdx, 0, moved);
+
+    newCats[catIdx] = { ...newCats[catIdx], items: newItems };
+    setCategories(newCats);
 
     axios.put(
-      `${BACKEND_URL}/api/admin/categories/reorder`,
-      { order: newCats.map((c, i) => ({ id: c.id, order: i + 1 })) },
+      `${BACKEND_URL}/api/admin/menu/reorder`,
+      { order: newItems.map((item, i) => ({ id: item.id, order: i + 1 })) },
       { headers: { Authorization: `Bearer ${token}` } }
     ).catch(console.error);
   };
 
-  // ─── Drag: Items ────────────────────────────────────────────────
   const handleItemDragStart = (e, itemId, catId) => {
     e.stopPropagation();
     isDraggingItem.current = true;
@@ -237,31 +302,36 @@ function Menu({ token }) {
     if (!dragItem) return;
     e.preventDefault();
     e.stopPropagation();
-    if (dragItem.id === targetItemId || dragItem.catId !== targetCatId) return;
-
-    const catIdx = categories.findIndex(c => c.id === targetCatId);
-    if (catIdx === -1) return;
-
-    const newCats = [...categories];
-    const newItems = [...newCats[catIdx].items];
-    const fromIdx = newItems.findIndex(i => i.id === dragItem.id);
-    const toIdx = newItems.findIndex(i => i.id === targetItemId);
-    if (fromIdx === -1 || toIdx === -1) return;
-
-    const [moved] = newItems.splice(fromIdx, 1);
-    newItems.splice(toIdx, 0, moved);
-
-    newCats[catIdx] = { ...newCats[catIdx], items: newItems };
-    setCategories(newCats);
+    reorderItems(dragItem, targetItemId, targetCatId);
     isDraggingItem.current = false;
     setDragItem(null);
     setDragOverItemId(null);
+  };
 
-    axios.put(
-      `${BACKEND_URL}/api/admin/menu/reorder`,
-      { order: newItems.map((item, i) => ({ id: item.id, order: i + 1 })) },
-      { headers: { Authorization: `Bearer ${token}` } }
-    ).catch(console.error);
+  const handleItemTouchStart = (e, itemId, catId) => {
+    isDraggingItem.current = true;
+    setDragItem({ id: itemId, catId });
+  };
+
+  const handleItemTouchMove = (e) => {
+    if (!dragItem) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const t = e.touches[0];
+    checkAutoScroll(t.clientY);
+    const target = findItemFromPoint(t.clientX, t.clientY);
+    if (target) setDragOverItemId(target.id);
+  };
+
+  const handleItemTouchEnd = (e) => {
+    if (!dragItem) return;
+    const t = e.changedTouches[0];
+    const target = findItemFromPoint(t.clientX, t.clientY);
+    if (target) reorderItems(dragItem, target.id, target.catId);
+    isDraggingItem.current = false;
+    setDragItem(null);
+    setDragOverItemId(null);
+    stopAutoScroll();
   };
 
   if (loading) return <div>Yükleniyor...</div>;
@@ -314,6 +384,7 @@ function Menu({ token }) {
       {categories.map(cat => (
         <div
           key={cat.id}
+          data-cat-id={cat.id}
           className={`category-admin ${!cat.is_available ? 'cat-disabled' : ''} ${dragOverCatId === cat.id && dragCatId !== cat.id ? 'drag-over' : ''}`}
           onDragOver={(e) => handleCatDragOver(e, cat.id)}
           onDrop={(e) => handleCatDrop(e, cat.id)}
@@ -325,6 +396,9 @@ function Menu({ token }) {
                 draggable
                 onDragStart={(e) => handleCatDragStart(e, cat.id)}
                 onDragEnd={handleCatDragEnd}
+                onTouchStart={(e) => handleCatTouchStart(e, cat.id)}
+                onTouchMove={handleCatTouchMove}
+                onTouchEnd={handleCatTouchEnd}
                 title="Sürükleyerek sırala"
               >⠿</span>
               {cat.image_url && (
@@ -347,6 +421,7 @@ function Menu({ token }) {
             {cat.items && cat.items.map(item => (
               <div
                 key={item.id}
+                data-item-id={item.id}
                 className={`item-admin ${!item.is_available ? 'item-disabled' : ''} ${dragOverItemId === item.id && dragItem?.id !== item.id ? 'drag-over' : ''}`}
                 onDragOver={(e) => handleItemDragOver(e, item.id)}
                 onDrop={(e) => handleItemDrop(e, item.id, cat.id)}
@@ -390,6 +465,9 @@ function Menu({ token }) {
                       draggable
                       onDragStart={(e) => handleItemDragStart(e, item.id, cat.id)}
                       onDragEnd={handleItemDragEnd}
+                      onTouchStart={(e) => handleItemTouchStart(e, item.id, cat.id)}
+                      onTouchMove={handleItemTouchMove}
+                      onTouchEnd={handleItemTouchEnd}
                       title="Sürükleyerek sırala"
                     >⠿</span>
                     {item.image_url && (

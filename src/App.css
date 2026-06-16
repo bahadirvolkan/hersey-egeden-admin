@@ -744,6 +744,11 @@ table tbody tr:hover {
     overflow-x: auto;
     width: 100%;
   }
+
+  .drag-handle {
+    font-size: 26px;
+    padding: 10px 12px;
+  }
 }
 
 /* Menu Admin Yeni */
@@ -829,6 +834,7 @@ table tbody tr:hover {
   user-select: none;
   line-height: 1;
   flex-shrink: 0;
+  touch-action: none;
 }
 
 .drag-handle:active {
