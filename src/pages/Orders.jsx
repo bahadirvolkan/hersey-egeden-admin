@@ -597,19 +597,34 @@ function Orders({ token }) {
     fetchOrders();
   };
 
-  const exportExcel = () => {
-    const data = orders.map(o => ({
-      'No': `#${o.id}`,
-      'Masa': `Masa ${o.table_number}`,
-      'Durum': o.status === 'pending' ? 'Hazırlanıyor' : o.status === 'completed' ? 'Tamamlandı' : 'Kapalı',
-      'Toplam (₺)': parseFloat(o.total_price).toFixed(2),
-      'Ürün Sayısı': o.item_count,
-      'Zaman': fmtDateTime(o.created_at),
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Adisyonlar');
-    XLSX.writeFile(wb, `adisyonlar-${selectedDate}.xlsx`);
+  const exportExcel = async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/admin/orders-detail?date=${selectedDate}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const detailed = res.data;
+
+      const header = ['No', 'Masa', 'Durum', 'Ürün', 'Adet', 'Birim Fiyat (₺)', 'Tutar (₺)', 'Zaman'];
+      const rows = [header];
+      const rowMeta = [{ level: 0 }];
+
+      for (const order of detailed) {
+        const status = order.status === 'pending' ? 'Hazırlanıyor' : order.status === 'completed' ? 'Tamamlandı' : 'Kapalı';
+        rows.push([`#${order.id}`, `Masa ${order.table_number}`, status, '', '', '', parseFloat(order.total_price).toFixed(2), fmtDateTime(order.created_at)]);
+        rowMeta.push({ level: 0 });
+        for (const item of order.items) {
+          rows.push(['', '', '', item.name, item.quantity, parseFloat(item.price_at_purchase).toFixed(2), (item.quantity * parseFloat(item.price_at_purchase)).toFixed(2), '']);
+          rowMeta.push({ level: 1 });
+        }
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!rows'] = rowMeta;
+      ws['!cols'] = [{ wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 28 }, { wch: 6 }, { wch: 16 }, { wch: 12 }, { wch: 16 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Adisyonlar');
+      XLSX.writeFile(wb, `adisyonlar-${selectedDate}.xlsx`);
+    } catch (err) { alert('Excel oluşturulamadı'); }
   };
 
   return (
