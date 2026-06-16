@@ -44,16 +44,16 @@ function autoPrintBill({ table_number, orders }) {
 <title>Hesap — Masa ${table_number}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 19px; font-weight: 600; padding: 20px; max-width: 280px; color: #111; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
   h1 { text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 17px; color: #666; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
   .divider { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 18px; color: #444; margin-bottom: 10px; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 10px; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 7px 0; vertical-align: top; font-size: 19px; }
+  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
   td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
-  .total-row td { font-weight: 700; font-size: 23px; border-top: 2px solid #111; padding-top: 8px; }
-  .footer { text-align: center; font-size: 17px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
+  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
+  .footer { text-align: center; font-size: 11px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
   @media print { body { padding: 0; } }
 </style></head><body>
 <h1>Her Şey Ege'den</h1>
@@ -98,18 +98,18 @@ function autoPrint(order) {
 <title>Adisyon — Masa ${order.table_number}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 19px; font-weight: 600; padding: 20px; max-width: 280px; color: #111; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
   h1 { text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 17px; color: #666; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
   .divider { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 18px; color: #444; margin-bottom: 10px; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 10px; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 7px 0; vertical-align: top; font-size: 19px; }
+  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
   td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
   tr.adj td { color: #666; font-style: italic; }
-  .total-row td { font-weight: 700; font-size: 23px; border-top: 2px solid #111; padding-top: 8px; }
-  .note { font-size: 18px; margin-top: 10px; color: #444; }
-  .footer { text-align: center; font-size: 17px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
+  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
+  .note { font-size: 12px; margin-top: 10px; color: #444; }
+  .footer { text-align: center; font-size: 11px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
   @media print { body { padding: 0; } }
 </style></head><body>
 <h1>Her Şey Ege'den</h1>
@@ -290,17 +290,17 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
 <title>Adisyon — Masa ${order.table_number}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 19px; font-weight: 600; padding: 16px; max-width: 280px; color: #111; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 13px; padding: 16px; max-width: 280px; color: #111; }
   h1 { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 17px; color: #666; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; }
+  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; }
   .divider { border: none; border-top: 1px solid #ddd; margin: 8px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 18px; color: #444; margin-bottom: 8px; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 8px; }
   table { width: 100%; border-collapse: collapse; }
   td { padding: 4px 0; vertical-align: top; }
   td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
   tr.adj td { color: #666; font-style: italic; }
-  .total-row td { font-weight: 700; font-size: 23px; border-top: 2px solid #111; padding-top: 7px; }
-  .footer { text-align: center; font-size: 17px; color: #999; margin-top: 14px; letter-spacing: 0.5px; }
+  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 7px; }
+  .footer { text-align: center; font-size: 11px; color: #999; margin-top: 14px; letter-spacing: 0.5px; }
   @media print { body { padding: 0; } }
 </style></head><body>
 <h1>Her Şey Ege'den</h1>
@@ -638,17 +638,17 @@ function Orders({ token }) {
 <title>Kısmi Hesap — Masa ${order.table_number}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 19px; font-weight: 600; padding: 20px; max-width: 280px; color: #111; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
   h1 { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 17px; color: #666; margin-bottom: 4px; letter-spacing: 1px; text-transform: uppercase; }
-  .partial-tag { text-align: center; font-size: 17px; color: #888; margin-bottom: 12px; }
+  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 4px; letter-spacing: 1px; text-transform: uppercase; }
+  .partial-tag { text-align: center; font-size: 11px; color: #888; margin-bottom: 12px; }
   .divider { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 18px; color: #444; margin-bottom: 10px; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #444; margin-bottom: 10px; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 7px 0; vertical-align: top; font-size: 19px; }
+  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
   td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
-  .total-row td { font-weight: 700; font-size: 23px; border-top: 2px solid #111; padding-top: 8px; }
-  .footer { text-align: center; font-size: 17px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
+  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
+  .footer { text-align: center; font-size: 11px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
   @media print { body { padding: 0; } }
 </style></head><body>
 <h1>Her Şey Ege'den</h1>
