@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
+import * as XLSX from 'xlsx';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -596,6 +597,21 @@ function Orders({ token }) {
     fetchOrders();
   };
 
+  const exportExcel = () => {
+    const data = orders.map(o => ({
+      'No': `#${o.id}`,
+      'Masa': `Masa ${o.table_number}`,
+      'Durum': o.status === 'pending' ? 'Hazırlanıyor' : o.status === 'completed' ? 'Tamamlandı' : 'Kapalı',
+      'Toplam (₺)': parseFloat(o.total_price).toFixed(2),
+      'Ürün Sayısı': o.item_count,
+      'Zaman': fmtDateTime(o.created_at),
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Adisyonlar');
+    XLSX.writeFile(wb, `adisyonlar-${selectedDate}.xlsx`);
+  };
+
   return (
     <div className="orders">
       <div className="orders-header">
@@ -621,6 +637,9 @@ function Orders({ token }) {
             Bugün
           </button>
         </div>
+        <button className="excel-btn" onClick={exportExcel} disabled={orders.length === 0}>
+          📥 Excel
+        </button>
       </div>
 
       <div className="filter-bar">

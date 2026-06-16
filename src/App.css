@@ -1618,6 +1618,21 @@ table tbody tr:hover {
   font-size: 15px;
 }
 
+.excel-btn {
+  background: #1a7a4a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.excel-btn:hover { opacity: 0.85; }
+.excel-btn:disabled { opacity: 0.4; cursor: default; }
+
 .month-display {
   font-size: 15px;
   font-weight: 600;

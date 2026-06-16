@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -97,6 +98,53 @@ function Reports({ token }) {
     finally { setLoadingMonthly(false); }
   };
 
+  const exportDailyExcel = () => {
+    const wb = XLSX.utils.book_new();
+    if (dailySummary) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{
+        'Tarih': dailyDate,
+        'Toplam Sipariş': dailySummary.total_orders,
+        'Toplam Ciro (₺)': Number(dailySummary.total_revenue).toFixed(2),
+        'Kullanılan Masa': dailySummary.unique_tables,
+      }]), 'Özet');
+    }
+    if (dailyDetail?.hourly?.length) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+        dailyDetail.hourly.map(h => ({ 'Saat': `${h.hour}:00`, 'Sipariş': h.orders, 'Ciro (₺)': Number(h.revenue).toFixed(2) }))
+      ), 'Saatlik');
+    }
+    if (dailyDetail?.top_items?.length) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+        dailyDetail.top_items.map((item, i) => ({ '#': i + 1, 'Ürün': item.name, 'Adet': item.quantity, 'Tutar (₺)': Number(item.revenue).toFixed(2) }))
+      ), 'Top Ürünler');
+    }
+    XLSX.writeFile(wb, `gunluk-rapor-${dailyDate}.xlsx`);
+  };
+
+  const exportMonthlyExcel = () => {
+    const wb = XLSX.utils.book_new();
+    if (monthlyData) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{
+        'Ay': fmtMonth(month),
+        'Toplam Sipariş': monthlyData.total_orders,
+        'Toplam Ciro (₺)': Number(monthlyData.total_revenue).toFixed(2),
+        'Kullanılan Masa': monthlyData.unique_tables,
+        'Aktif Gün': monthlyData.active_days,
+      }]), 'Özet');
+    }
+    if (monthlyData?.daily?.length) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+        monthlyData.daily.map(d => ({ 'Tarih': d.date, 'Sipariş': d.total_orders, 'Ciro (₺)': Number(d.total_revenue).toFixed(2), 'Masa': d.unique_tables }))
+      ), 'Günlük');
+    }
+    if (monthlyData?.top_items?.length) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+        monthlyData.top_items.map((item, i) => ({ '#': i + 1, 'Ürün': item.name, 'Adet': item.quantity, 'Tutar (₺)': Number(item.revenue).toFixed(2) }))
+      ), 'Top Ürünler');
+    }
+    XLSX.writeFile(wb, `aylik-rapor-${month}.xlsx`);
+  };
+
   const goDay = (offset) => {
     const d = new Date(dailyDate);
     d.setDate(d.getDate() + offset);
@@ -125,6 +173,7 @@ function Reports({ token }) {
             />
             <button onClick={() => goDay(1)}>▶</button>
             <button className="today-btn" onClick={() => setDailyDate(todayStr())}>Bugün</button>
+            <button className="excel-btn" onClick={exportDailyExcel} disabled={!dailySummary || dailySummary.total_orders === 0}>📥 Excel</button>
           </div>
 
           {loadingDaily ? (
@@ -196,6 +245,7 @@ function Reports({ token }) {
             <span className="month-display">{fmtMonth(month)}</span>
             <button onClick={() => setMonth(nextMonth(month))}>▶</button>
             <button className="today-btn" onClick={() => setMonth(thisMonth())}>Bu Ay</button>
+            <button className="excel-btn" onClick={exportMonthlyExcel} disabled={!monthlyData || monthlyData.total_orders === 0}>📥 Excel</button>
           </div>
 
           {loadingMonthly ? (
