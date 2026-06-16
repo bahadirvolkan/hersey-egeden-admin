@@ -8,11 +8,9 @@ import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 import './App.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
-
 function App() {
   const [token, setToken] = useState(localStorage.getItem('admin-token'));
+  const [navOpen, setNavOpen] = useState(false);
 
   const handleLogin = (newToken) => {
     setToken(newToken);
@@ -24,6 +22,8 @@ function App() {
     localStorage.removeItem('admin-token');
   };
 
+  const closeNav = () => setNavOpen(false);
+
   if (!token) {
     return <Login onLogin={handleLogin} />;
   }
@@ -31,27 +31,31 @@ function App() {
   return (
     <Router>
       <div className="admin-app">
-        <nav className="admin-nav">
+        <button className="hamburger" onClick={() => setNavOpen(!navOpen)}>☰</button>
+
+        {navOpen && <div className="nav-overlay" onClick={closeNav} />}
+
+        <nav className={`admin-nav ${navOpen ? 'nav-open' : ''}`}>
           <div className="nav-header">
             <img src="/logo.png" alt="logo" className="nav-logo" />
             <h2>Her Şey Ege</h2>
           </div>
           <ul>
-            <li><Link to="/dashboard">📊 Dashboard</Link></li>
-            <li><Link to="/orders">🧾 Adisyonlar</Link></li>
-            <li><Link to="/menu">🍽️ Menü</Link></li>
-            <li><Link to="/reports">📈 Raporlar</Link></li>
-            <li><Link to="/settings">⚙️ Ayarlar</Link></li>
+            <li><Link to="/dashboard" onClick={closeNav}>📊 Dashboard</Link></li>
+            <li><Link to="/orders" onClick={closeNav}>🧾 Adisyonlar</Link></li>
+            <li><Link to="/menu" onClick={closeNav}>🍽️ Menü</Link></li>
+            <li><Link to="/reports" onClick={closeNav}>📈 Raporlar</Link></li>
+            <li><Link to="/settings" onClick={closeNav}>⚙️ Ayarlar</Link></li>
             <li>
-              <a href="https://www.herseyegeden.com.tr/mutfak" target="_blank" rel="noreferrer" className="kitchen-link">
+              <a href="https://www.herseyegeden.com.tr/mutfak" target="_blank" rel="noreferrer" className="kitchen-link" onClick={closeNav}>
                 👨‍🍳 Mutfak
               </a>
             </li>
-<li><button onClick={handleLogout} className="logout-btn">🚪 Çıkış</button></li>
+            <li><button onClick={handleLogout} className="logout-btn">🚪 Çıkış</button></li>
           </ul>
         </nav>
 
-        <div className="admin-content">
+        <div className="admin-content" onClick={navOpen ? closeNav : undefined}>
           <Routes>
             <Route path="/dashboard" element={<Dashboard token={token} />} />
             <Route path="/orders" element={<Orders token={token} />} />

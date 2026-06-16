@@ -609,17 +609,57 @@ table tbody tr:hover {
   gap: 10px;
 }
 
+.hamburger {
+  display: none;
+}
+
+.nav-overlay {
+  display: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
+  .hamburger {
+    display: block;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 1100;
+    background: #333;
+    color: white;
+    border: none;
+    font-size: 22px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .nav-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+  }
+
   .admin-nav {
-    width: 100%;
-    height: auto;
-    position: static;
+    position: fixed;
+    left: -270px;
+    width: 250px;
+    height: 100vh;
+    transition: left 0.25s ease;
+    z-index: 1050;
+  }
+
+  .admin-nav.nav-open {
+    left: 0;
   }
 
   .admin-content {
     margin-left: 0;
     padding: 15px;
+    padding-top: 55px;
   }
 
   .report-cards {
