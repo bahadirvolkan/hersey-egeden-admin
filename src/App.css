@@ -759,6 +759,26 @@ table tbody tr:hover {
   margin-bottom: 25px;
 }
 
+.menu-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.collapse-all-btn {
+  padding: 10px 20px;
+  background: white;
+  color: #667eea;
+  border: 1px solid #667eea;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.collapse-all-btn:hover {
+  background: #f0f1ff;
+}
+
 .add-cat-btn {
   padding: 10px 20px;
   background: #667eea;
@@ -820,7 +840,7 @@ table tbody tr:hover {
 .collapse-btn {
   background: none;
   border: none;
-  font-size: 16px;
+  font-size: 32px;
   color: #667eea;
   cursor: pointer;
   padding: 4px 8px;

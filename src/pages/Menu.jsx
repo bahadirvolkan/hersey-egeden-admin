@@ -352,9 +352,22 @@ function Menu({ token }) {
       )}
       <div className="menu-admin-header">
         <h1>Menü Yönetimi</h1>
-        <button className="add-cat-btn" onClick={() => setShowAddCat(!showAddCat)}>
-          + Kategori Ekle
-        </button>
+        <div className="menu-header-actions">
+          <button
+            className="collapse-all-btn"
+            onClick={() => {
+              const allCollapsed = categories.every(c => collapsedCats[c.id]);
+              const next = {};
+              categories.forEach(c => { next[c.id] = !allCollapsed; });
+              setCollapsedCats(next);
+            }}
+          >
+            {categories.every(c => collapsedCats[c.id]) ? '▾ Tümünü Aç' : '▸ Tümünü Kapat'}
+          </button>
+          <button className="add-cat-btn" onClick={() => setShowAddCat(!showAddCat)}>
+            + Kategori Ekle
+          </button>
+        </div>
       </div>
 
       {showAddCat && (
