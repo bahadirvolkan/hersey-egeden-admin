@@ -90,18 +90,10 @@ function autoPrint(order) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('tr-TR');
   const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  const discount = parseFloat(order.discount) || 0;
-  const extra = parseFloat(order.extra_charge) || 0;
-  const itemsTotal = order.items.reduce((s, i) => s + i.price_at_purchase * i.quantity, 0);
-  const finalTotal = Math.max(0, itemsTotal - discount + extra);
 
   const rows = order.items.map(i =>
-    `<tr><td>${i.quantity}x ${i.name}</td><td class="r">${(i.price_at_purchase * i.quantity).toFixed(2)} ₺</td></tr>`
+    `<tr><td>${i.quantity}x ${i.name}</td></tr>`
   ).join('');
-  const discountRow = discount > 0
-    ? `<tr class="adj"><td>İndirim</td><td class="r">− ${discount.toFixed(2)} ₺</td></tr>` : '';
-  const extraRow = extra > 0
-    ? `<tr class="adj"><td>${order.extra_charge_label || 'İlave Ücret'}</td><td class="r">+ ${extra.toFixed(2)} ₺</td></tr>` : '';
   const noteRow = order.customer_note
     ? `<p class="note">Not: ${order.customer_note}</p>` : '';
 
@@ -113,9 +105,7 @@ function autoPrint(order) {
 <hr class="divider">
 <div class="meta"><span>Masa ${order.table_number}</span><span>#${order.id}</span><span>${dateStr} ${timeStr}</span></div>
 <hr class="divider">
-<table>${rows}${discountRow}${extraRow}
-  <tr class="total-row"><td>TOPLAM</td><td class="r">${finalTotal.toFixed(2)} ₺</td></tr>
-</table>
+<table>${rows}</table>
 ${noteRow}
 <div class="footer">Teşekkürler • Afiyet olsun</div>
 <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 800); }</script>
@@ -281,17 +271,10 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
     const now = new Date();
     const dateStr = now.toLocaleDateString('tr-TR');
     const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-    const itemsTotal = items.reduce((s, i) => s + i.price_at_purchase * i.quantity, 0);
-    const finalTotal = Math.max(0, itemsTotal - discount + extra);
 
     const rows = items.map(i =>
-      `<tr><td>${i.quantity}x ${i.name}</td><td class="r">${(i.price_at_purchase * i.quantity).toFixed(2)} ₺</td></tr>`
+      `<tr><td>${i.quantity}x ${i.name}</td></tr>`
     ).join('');
-
-    const discountRow = discount > 0
-      ? `<tr class="adj"><td>İndirim</td><td class="r">− ${discount.toFixed(2)} ₺</td></tr>` : '';
-    const extraRow = extra > 0
-      ? `<tr class="adj"><td>${extraLabel || 'İlave Ücret'}</td><td class="r">+ ${extra.toFixed(2)} ₺</td></tr>` : '';
 
     const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
 <title>Adisyon — Masa ${order.table_number}</title>
@@ -301,10 +284,7 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
 <hr class="divider">
 <div class="meta"><span>Masa ${order.table_number}</span><span>#${order.id}</span><span>${dateStr} ${timeStr}</span></div>
 <hr class="divider">
-<table>${rows}${discountRow}${extraRow}
-  <tr class="total-row"><td>TOPLAM</td><td class="r">${finalTotal.toFixed(2)} ₺</td></tr>
-</table>
-${buildPaymentRows(currentPayment)}
+<table>${rows}</table>
 <div class="footer">Teşekkürler • Afiyet olsun</div>
 <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }</script>
 </body></html>`;
