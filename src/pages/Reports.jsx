@@ -25,28 +25,59 @@ const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('tr-TR', {
   weekday: 'short', day: 'numeric', month: 'long'
 });
 
-function SummaryCards({ total_orders, total_revenue, unique_tables, active_days }) {
+function SummaryCards({ total_orders, total_revenue, unique_tables, active_days, total_nakit, total_kk, total_yemek, total_expense }) {
+  const net = (Number(total_revenue) || 0) - (Number(total_expense) || 0);
   return (
-    <div className="report-cards">
-      <div className="card">
-        <h3>Toplam Sipariş</h3>
-        <p className="value">{total_orders ?? '—'}</p>
-      </div>
-      <div className="card">
-        <h3>Toplam Ciro</h3>
-        <p className="value">{total_revenue != null ? Number(total_revenue).toFixed(2) + ' ₺' : '—'}</p>
-      </div>
-      <div className="card">
-        <h3>Kullanılan Masa</h3>
-        <p className="value">{unique_tables ?? '—'}</p>
-      </div>
-      {active_days != null && (
+    <>
+      <div className="report-cards">
         <div className="card">
-          <h3>Aktif Gün</h3>
-          <p className="value">{active_days}</p>
+          <h3>Toplam Sipariş</h3>
+          <p className="value">{total_orders ?? '—'}</p>
+        </div>
+        <div className="card">
+          <h3>Toplam Ciro</h3>
+          <p className="value">{total_revenue != null ? Number(total_revenue).toFixed(2) + ' ₺' : '—'}</p>
+        </div>
+        <div className="card">
+          <h3>Kullanılan Masa</h3>
+          <p className="value">{unique_tables ?? '—'}</p>
+        </div>
+        {active_days != null && (
+          <div className="card">
+            <h3>Aktif Gün</h3>
+            <p className="value">{active_days}</p>
+          </div>
+        )}
+      </div>
+      {(total_nakit != null || total_kk != null || total_yemek != null) && (
+        <div className="report-cards payment-cards">
+          <div className="card">
+            <h3>💵 Nakit</h3>
+            <p className="value">{Number(total_nakit || 0).toFixed(2)} ₺</p>
+          </div>
+          <div className="card">
+            <h3>💳 Kredi/Banka</h3>
+            <p className="value">{Number(total_kk || 0).toFixed(2)} ₺</p>
+          </div>
+          <div className="card">
+            <h3>🎟 Yemek Kartı</h3>
+            <p className="value">{Number(total_yemek || 0).toFixed(2)} ₺</p>
+          </div>
+          {total_expense != null && (
+            <div className="card card-expense">
+              <h3>Giderler</h3>
+              <p className="value">{Number(total_expense || 0).toFixed(2)} ₺</p>
+            </div>
+          )}
+          {total_expense != null && (
+            <div className={`card card-net ${net >= 0 ? 'positive' : 'negative'}`}>
+              <h3>Net Kazanç</h3>
+              <p className="value">{net.toFixed(2)} ₺</p>
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -105,6 +136,11 @@ function Reports({ token }) {
         'Tarih': dailyDate,
         'Toplam Sipariş': dailySummary.total_orders,
         'Toplam Ciro (₺)': Number(dailySummary.total_revenue).toFixed(2),
+        'Nakit (₺)': Number(dailySummary.total_nakit || 0).toFixed(2),
+        'Kredi/Banka (₺)': Number(dailySummary.total_kk || 0).toFixed(2),
+        'Yemek Kartı (₺)': Number(dailySummary.total_yemek || 0).toFixed(2),
+        'Giderler (₺)': Number(dailySummary.total_expense || 0).toFixed(2),
+        'Net Kazanç (₺)': (Number(dailySummary.total_revenue) - Number(dailySummary.total_expense || 0)).toFixed(2),
         'Kullanılan Masa': dailySummary.unique_tables,
       }]), 'Özet');
     }
@@ -128,14 +164,37 @@ function Reports({ token }) {
         'Ay': fmtMonth(month),
         'Toplam Sipariş': monthlyData.total_orders,
         'Toplam Ciro (₺)': Number(monthlyData.total_revenue).toFixed(2),
+        'Nakit (₺)': Number(monthlyData.total_nakit || 0).toFixed(2),
+        'Kredi/Banka (₺)': Number(monthlyData.total_kk || 0).toFixed(2),
+        'Yemek Kartı (₺)': Number(monthlyData.total_yemek || 0).toFixed(2),
+        'Giderler (₺)': Number(monthlyData.total_expense || 0).toFixed(2),
+        'Net Kazanç (₺)': (Number(monthlyData.total_revenue) - Number(monthlyData.total_expense || 0)).toFixed(2),
         'Kullanılan Masa': monthlyData.unique_tables,
         'Aktif Gün': monthlyData.active_days,
       }]), 'Özet');
     }
     if (monthlyData?.daily?.length) {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
-        monthlyData.daily.map(d => ({ 'Tarih': d.date, 'Sipariş': d.total_orders, 'Ciro (₺)': Number(d.total_revenue).toFixed(2), 'Masa': d.unique_tables }))
+        monthlyData.daily.map(d => ({
+          'Tarih': d.date,
+          'Sipariş': d.total_orders,
+          'Ciro (₺)': Number(d.total_revenue).toFixed(2),
+          'Nakit (₺)': Number(d.nakit || 0).toFixed(2),
+          'Kredi/Banka (₺)': Number(d.kk || 0).toFixed(2),
+          'Yemek Kartı (₺)': Number(d.yemek || 0).toFixed(2),
+          'Masa': d.unique_tables,
+        }))
       ), 'Günlük');
+    }
+    if (monthlyData?.expenses?.length) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+        monthlyData.expenses.map(e => ({
+          'Tarih': e.date,
+          'Açıklama': e.description,
+          'Ödeme': e.payment_method,
+          'Tutar (₺)': Number(e.amount).toFixed(2),
+        }))
+      ), 'Giderler');
     }
     if (monthlyData?.top_items?.length) {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
@@ -185,6 +244,10 @@ function Reports({ token }) {
                   total_orders={dailySummary.total_orders}
                   total_revenue={dailySummary.total_revenue}
                   unique_tables={dailySummary.unique_tables}
+                  total_nakit={dailySummary.total_nakit}
+                  total_kk={dailySummary.total_kk}
+                  total_yemek={dailySummary.total_yemek}
+                  total_expense={dailySummary.total_expense}
                 />
               )}
 
@@ -258,6 +321,10 @@ function Reports({ token }) {
                   total_revenue={monthlyData.total_revenue}
                   unique_tables={monthlyData.unique_tables}
                   active_days={monthlyData.active_days}
+                  total_nakit={monthlyData.total_nakit}
+                  total_kk={monthlyData.total_kk}
+                  total_yemek={monthlyData.total_yemek}
+                  total_expense={monthlyData.total_expense}
                 />
               )}
 

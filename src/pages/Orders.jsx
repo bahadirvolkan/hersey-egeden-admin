@@ -17,17 +17,43 @@ const fmtDateTime = (dt) => {
   return d ? d.toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
 };
 
-function autoPrintBill({ table_number, orders }) {
+const RECEIPT_CSS = `
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Verdana, 'Segoe UI', Arial, sans-serif; font-size: 14px; padding: 20px; max-width: 280px; color: #111; }
+  h1 { text-align: center; font-size: 21px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .sub { text-align: center; font-size: 15px; color: #555; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .divider { border: none; border-top: 1px solid #bbb; margin: 10px 0; }
+  .meta { display: flex; justify-content: space-between; font-size: 15px; color: #333; margin-bottom: 10px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 5px 0; vertical-align: top; font-size: 14px; }
+  td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
+  tr.adj td { color: #555; font-style: italic; font-size: 13px; }
+  .total-row td { font-weight: 700; font-size: 17px; border-top: 2px solid #111; padding-top: 8px; }
+  .payment-row td { font-size: 14px; color: #333; padding: 3px 0; }
+  .note { font-size: 14px; margin-top: 10px; color: #333; }
+  .partial-tag { text-align: center; font-size: 14px; color: #777; margin-bottom: 12px; font-weight: 600; }
+  .footer { text-align: center; font-size: 15px; color: #888; margin-top: 16px; letter-spacing: 0.5px; }
+  @media print { body { padding: 0; } }
+`;
+
+function buildPaymentRows(payment) {
+  if (!payment || (!payment.nakit && !payment.kk && !payment.yemek)) return '';
+  const rows = [
+    payment.nakit > 0 ? `<tr class="payment-row"><td>Nakit</td><td class="r">${payment.nakit.toFixed(2)} ₺</td></tr>` : '',
+    payment.kk > 0 ? `<tr class="payment-row"><td>Kredi/Banka Kartı</td><td class="r">${payment.kk.toFixed(2)} ₺</td></tr>` : '',
+    payment.yemek > 0 ? `<tr class="payment-row"><td>Yemek Kartı</td><td class="r">${payment.yemek.toFixed(2)} ₺</td></tr>` : '',
+  ].join('');
+  return `<hr class="divider"><table>${rows}</table>`;
+}
+
+function autoPrintBill({ table_number, orders, payment = {} }) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('tr-TR');
   const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-  // Tüm kalemleri birleştir
   const combined = {};
   let total = 0;
   for (const order of orders) {
-    const disc = parseFloat(order.discount) || 0;
-    const extra = parseFloat(order.extra_charge) || 0;
     for (const item of order.items) {
       const key = item.name;
       if (combined[key]) combined[key].quantity += item.quantity;
@@ -42,31 +68,16 @@ function autoPrintBill({ table_number, orders }) {
 
   const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
 <title>Hesap — Masa ${table_number}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Verdana, 'Segoe UI', Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
-  h1 { text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 15px; color: #666; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
-  .divider { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 16px; color: #444; margin-bottom: 10px; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
-  td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
-  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
-  .footer { text-align: center; font-size: 15px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
-  @media print { body { padding: 0; } }
-</style></head><body>
+<style>${RECEIPT_CSS}</style></head><body>
 <h1>Her Şey Ege'den</h1>
 <div class="sub">Kahvaltı &amp; Meze</div>
 <hr class="divider">
-<div class="meta">
-  <span>Masa ${table_number}</span>
-  <span>${dateStr} ${timeStr}</span>
-</div>
+<div class="meta"><span>Masa ${table_number}</span><span>${dateStr} ${timeStr}</span></div>
 <hr class="divider">
 <table>${rows}
   <tr class="total-row"><td>TOPLAM</td><td class="r">${total.toFixed(2)} ₺</td></tr>
 </table>
+${buildPaymentRows(payment)}
 <div class="footer">Teşekkürler • Afiyet olsun</div>
 <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 800); }</script>
 </body></html>`;
@@ -96,30 +107,11 @@ function autoPrint(order) {
 
   const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
 <title>Adisyon — Masa ${order.table_number}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Verdana, 'Segoe UI', Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
-  h1 { text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 15px; color: #666; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
-  .divider { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 16px; color: #444; margin-bottom: 10px; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
-  td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
-  tr.adj td { color: #666; font-style: italic; }
-  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
-  .note { font-size: 16px; margin-top: 10px; color: #444; }
-  .footer { text-align: center; font-size: 15px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
-  @media print { body { padding: 0; } }
-</style></head><body>
+<style>${RECEIPT_CSS}</style></head><body>
 <h1>Her Şey Ege'den</h1>
 <div class="sub">Kahvaltı &amp; Meze</div>
 <hr class="divider">
-<div class="meta">
-  <span>Masa ${order.table_number}</span>
-  <span>#${order.id}</span>
-  <span>${dateStr} ${timeStr}</span>
-</div>
+<div class="meta"><span>Masa ${order.table_number}</span><span>#${order.id}</span><span>${dateStr} ${timeStr}</span></div>
 <hr class="divider">
 <table>${rows}${discountRow}${extraRow}
   <tr class="total-row"><td>TOPLAM</td><td class="r">${finalTotal.toFixed(2)} ₺</td></tr>
@@ -288,38 +280,14 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
 
     const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
 <title>Adisyon — Masa ${order.table_number}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Verdana, 'Segoe UI', Arial, sans-serif; font-size: 13px; padding: 16px; max-width: 280px; color: #111; }
-  h1 { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 15px; color: #666; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; }
-  .divider { border: none; border-top: 1px solid #ddd; margin: 8px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 16px; color: #444; margin-bottom: 8px; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 4px 0; vertical-align: top; }
-  td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
-  tr.adj td { color: #666; font-style: italic; }
-  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 7px; }
-  .footer { text-align: center; font-size: 15px; color: #999; margin-top: 14px; letter-spacing: 0.5px; }
-  @media print { body { padding: 0; } }
-</style></head><body>
+<style>${RECEIPT_CSS}</style></head><body>
 <h1>Her Şey Ege'den</h1>
 <div class="sub">Kahvaltı &amp; Meze</div>
 <hr class="divider">
-<div class="meta">
-  <span>Masa ${order.table_number}</span>
-  <span>#${order.id}</span>
-  <span>${dateStr} ${timeStr}</span>
-</div>
+<div class="meta"><span>Masa ${order.table_number}</span><span>#${order.id}</span><span>${dateStr} ${timeStr}</span></div>
 <hr class="divider">
-<table>
-  ${rows}
-  ${discountRow}
-  ${extraRow}
-  <tr class="total-row">
-    <td>TOPLAM</td>
-    <td class="r">${finalTotal.toFixed(2)} ₺</td>
-  </tr>
+<table>${rows}${discountRow}${extraRow}
+  <tr class="total-row"><td>TOPLAM</td><td class="r">${finalTotal.toFixed(2)} ₺</td></tr>
 </table>
 <div class="footer">Teşekkürler • Afiyet olsun</div>
 <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }</script>
@@ -500,6 +468,58 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
   );
 }
 
+function PaymentModal({ total, onConfirm, onClose }) {
+  const [nakit, setNakit] = useState('');
+  const [kk, setKk] = useState('');
+  const [yemek, setYemek] = useState('');
+
+  const totalPaid = (parseFloat(nakit) || 0) + (parseFloat(kk) || 0) + (parseFloat(yemek) || 0);
+  const diff = total - totalPaid;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="payment-modal" onClick={e => e.stopPropagation()}>
+        <div className="payment-modal-header">
+          <h3>Ödeme Yöntemi</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="payment-total-display">
+          <span>Toplam Tutar</span>
+          <strong>{total.toFixed(2)} ₺</strong>
+        </div>
+        <div className="payment-fields">
+          {[
+            { label: '💵 Nakit', val: nakit, set: setNakit },
+            { label: '💳 Kredi / Banka Kartı', val: kk, set: setKk },
+            { label: '🎟 Yemek Kartı', val: yemek, set: setYemek },
+          ].map(({ label, val, set }) => (
+            <div key={label} className="payment-field">
+              <label>{label}</label>
+              <input type="number" min="0" step="0.01" value={val}
+                onChange={e => set(e.target.value)} placeholder="0.00" />
+            </div>
+          ))}
+        </div>
+        <div className={`payment-diff ${Math.abs(diff) < 0.01 ? 'ok' : diff > 0 ? 'under' : 'over'}`}>
+          {Math.abs(diff) < 0.01 ? '✓ Toplam eşleşiyor' :
+           diff > 0 ? `Kalan: ${diff.toFixed(2)} ₺` :
+           `Fazla: +${Math.abs(diff).toFixed(2)} ₺`}
+        </div>
+        <div className="payment-modal-actions">
+          <button className="payment-cancel-btn" onClick={onClose}>İptal</button>
+          <button className="payment-confirm-btn" onClick={() => onConfirm({
+            nakit: parseFloat(nakit) || 0,
+            kk: parseFloat(kk) || 0,
+            yemek: parseFloat(yemek) || 0,
+          })}>
+            🖨️ Adisyon Bas
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Orders({ token }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -510,6 +530,7 @@ function Orders({ token }) {
   const [editingOrder, setEditingOrder] = useState(null);
   const [menu, setMenu] = useState([]);
   const [partialSelections, setPartialSelections] = useState({});
+  const [pendingBill, setPendingBill] = useState(null); // { tableId, billData }
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(
     () => localStorage.getItem('autoPrint') !== 'false'
   );
@@ -543,7 +564,7 @@ function Orders({ token }) {
         const res = await axios.get(`${BACKEND_URL}/api/admin/table/${table_id}/bill`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        autoPrintBill(res.data);
+        setPendingBill({ tableId: table_id, billData: res.data });
       } catch (err) { console.error('Bill print failed:', err); }
     });
     return () => socket.close();
@@ -636,30 +657,12 @@ function Orders({ token }) {
 
     const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
 <title>Kısmi Hesap — Masa ${order.table_number}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Verdana, 'Segoe UI', Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 280px; color: #111; }
-  h1 { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 15px; color: #666; margin-bottom: 4px; letter-spacing: 1px; text-transform: uppercase; }
-  .partial-tag { text-align: center; font-size: 15px; color: #888; margin-bottom: 12px; }
-  .divider { border: none; border-top: 1px solid #ddd; margin: 10px 0; }
-  .meta { display: flex; justify-content: space-between; font-size: 16px; color: #444; margin-bottom: 10px; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 5px 0; vertical-align: top; font-size: 13px; }
-  td.r { text-align: right; white-space: nowrap; padding-left: 8px; }
-  .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #111; padding-top: 8px; }
-  .footer { text-align: center; font-size: 15px; color: #999; margin-top: 16px; letter-spacing: 0.5px; }
-  @media print { body { padding: 0; } }
-</style></head><body>
+<style>${RECEIPT_CSS}</style></head><body>
 <h1>Her Şey Ege'den</h1>
 <div class="sub">Kahvaltı &amp; Meze</div>
-<div class="partial-tag">Kısmi Hesap</div>
+<div class="partial-tag">— Kısmi Hesap —</div>
 <hr class="divider">
-<div class="meta">
-  <span>Masa ${order.table_number}</span>
-  <span>#${orderId}</span>
-  <span>${dateStr} ${timeStr}</span>
-</div>
+<div class="meta"><span>Masa ${order.table_number}</span><span>#${orderId}</span><span>${dateStr} ${timeStr}</span></div>
 <hr class="divider">
 <table>${rows}
   <tr class="total-row"><td>TOPLAM</td><td class="r">${total.toFixed(2)} ₺</td></tr>
@@ -795,9 +798,20 @@ function Orders({ token }) {
                     <td>{parseFloat(order.total_price).toFixed(2)} ₺</td>
                     <td>{order.item_count} ürün</td>
                     <td>{fmtTime(order.created_at)}</td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
                       <button className="edit-order-btn" onClick={e => openEdit(e, order.id)}>
                         ✏️ Düzenle
+                      </button>
+                      <button className="bill-print-btn" style={{ marginLeft: 6 }} onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const res = await axios.get(`${BACKEND_URL}/api/admin/table/${order.table_id}/bill`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          setPendingBill({ tableId: order.table_id, billData: res.data });
+                        } catch (err) { alert('Hesap alınamadı'); }
+                      }}>
+                        🧾 Hesap
                       </button>
                     </td>
                   </tr>
@@ -887,6 +901,27 @@ function Orders({ token }) {
           menu={menu}
           onClose={() => setEditingOrder(null)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {pendingBill && (
+        <PaymentModal
+          total={pendingBill.billData.orders.reduce((s, o) => s + parseFloat(o.total_price), 0)}
+          onClose={() => setPendingBill(null)}
+          onConfirm={async (payment) => {
+            const firstOrderId = pendingBill.billData.orders[0]?.id;
+            if (firstOrderId) {
+              try {
+                await axios.put(`${BACKEND_URL}/api/admin/orders/${firstOrderId}/payment`, {
+                  payment_nakit: payment.nakit,
+                  payment_kk: payment.kk,
+                  payment_yemek: payment.yemek,
+                }, { headers: { Authorization: `Bearer ${token}` } });
+              } catch (err) { console.error('Ödeme kaydetme hatası:', err); }
+            }
+            autoPrintBill({ ...pendingBill.billData, payment });
+            setPendingBill(null);
+          }}
         />
       )}
     </div>
