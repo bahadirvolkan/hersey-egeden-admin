@@ -1879,6 +1879,16 @@ table tbody tr:hover {
 }
 .payment-confirm-btn:hover { background: #1e2f66; }
 
+/* ───── EditModal inline payment fields ───── */
+.edit-payment-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  .edit-payment-fields { grid-template-columns: 1fr; }
+}
+
 /* ───── Bill Print btn ───── */
 .bill-print-btn {
   background: #27ae60; color: #fff;

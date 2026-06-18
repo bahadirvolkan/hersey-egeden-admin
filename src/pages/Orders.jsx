@@ -167,9 +167,24 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [payVals, setPayVals] = useState({ nakit: '', kk: '', yemek: '' });
+  const [tumuField, setTumuField] = useState(null);
 
   const itemsTotal = items.reduce((s, i) => s + i.price_at_purchase * i.quantity, 0);
   const finalTotal = Math.max(0, itemsTotal - discount + extra);
+
+  const othersPaySum = (field) =>
+    ['nakit', 'kk', 'yemek'].filter(f => f !== field)
+      .reduce((s, f) => s + (parseFloat(payVals[f]) || 0), 0);
+  const computedPayVal = (field) =>
+    tumuField === field ? Math.max(0, finalTotal - othersPaySum(field)) : (parseFloat(payVals[field]) || 0);
+  const getPayDisplay = (field) =>
+    tumuField === field ? computedPayVal(field).toFixed(2) : payVals[field];
+  const currentPayment = {
+    nakit: computedPayVal('nakit'),
+    kk:    computedPayVal('kk'),
+    yemek: computedPayVal('yemek'),
+  };
 
   const allMenuItems = menu.flatMap(c => c.items || []);
   const filtered = addSearch.trim()
@@ -289,6 +304,7 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
 <table>${rows}${discountRow}${extraRow}
   <tr class="total-row"><td>TOPLAM</td><td class="r">${finalTotal.toFixed(2)} ₺</td></tr>
 </table>
+${buildPaymentRows(currentPayment)}
 <div class="footer">Teşekkürler • Afiyet olsun</div>
 <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }</script>
 </body></html>`;
@@ -410,6 +426,36 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
               <span>{finalTotal.toFixed(2)} ₺</span>
             </div>
           </div>
+
+          {/* Ödeme Yöntemi */}
+          <div className="edit-section">
+            <h4>Ödeme Yöntemi</h4>
+            <div className="payment-fields edit-payment-fields">
+              {[
+                { key: 'nakit', label: '💵 Nakit' },
+                { key: 'kk',    label: '💳 Kredi / Banka' },
+                { key: 'yemek', label: '🎟 Yemek Kartı' },
+              ].map(({ key, label }) => (
+                <div key={key} className="payment-field">
+                  <div className="payment-field-header">
+                    <label>{label}</label>
+                    <button
+                      className={`tumu-btn${tumuField === key ? ' active' : ''}`}
+                      onClick={() => setTumuField(prev => prev === key ? null : key)}
+                    >Tümü</button>
+                  </div>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={getPayDisplay(key)}
+                    onChange={e => setPayVals(prev => ({ ...prev, [key]: e.target.value }))}
+                    placeholder="0.00"
+                    readOnly={tumuField === key}
+                    className={tumuField === key ? 'tumu-active-input' : ''}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="edit-modal-footer">
@@ -433,7 +479,7 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
               🗑️ Sil
             </button>
             <button className="edit-print-btn" onClick={handlePrint}>🖨️ Yazdır</button>
-            <button className="bill-print-btn" onClick={() => onPrintBill(order.table_id)}>🧾 Hesap</button>
+            <button className="bill-print-btn" onClick={() => onPrintBill(order.table_id, currentPayment)}>🧾 Hesap Bas</button>
             <button className="edit-cancel-btn" onClick={onClose}>İptal</button>
             <button className="edit-save-btn" onClick={handleSave} disabled={saving}>
               {saving ? 'Kaydediliyor...' : 'Kaydet'}
@@ -934,12 +980,24 @@ function Orders({ token }) {
           menu={menu}
           onClose={() => setEditingOrder(null)}
           onSaved={handleSaved}
-          onPrintBill={async (tableId) => {
+          onPrintBill={async (tableId, payment) => {
             try {
               const res = await axios.get(`${BACKEND_URL}/api/admin/table/${tableId}/bill`, {
                 headers: { Authorization: `Bearer ${token}` }
               });
-              setPendingBill({ tableId, billData: res.data });
+              if (payment) {
+                const firstOrderId = res.data.orders[0]?.id;
+                if (firstOrderId) {
+                  await axios.put(`${BACKEND_URL}/api/admin/orders/${firstOrderId}/payment`, {
+                    payment_nakit: payment.nakit,
+                    payment_kk: payment.kk,
+                    payment_yemek: payment.yemek,
+                  }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                }
+                autoPrintBill({ ...res.data, payment });
+              } else {
+                setPendingBill({ tableId, billData: res.data });
+              }
             } catch (err) { alert('Hesap alınamadı'); }
           }}
         />
