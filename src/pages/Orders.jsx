@@ -21,8 +21,8 @@ const RECEIPT_CSS = `
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: Verdana, 'Segoe UI', Arial, sans-serif; font-size: 14px; padding: 20px; max-width: 280px; color: #111; }
   h1 { text-align: center; font-size: 21px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 15px; color: #555; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
-  .divider { border: none; border-top: 1px solid #bbb; margin: 10px 0; }
+  .sub { text-align: center; font-size: 15px; color: #555; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+  .divider { border: none; border-top: 2px solid #111; margin: 10px 0; }
   .meta { display: flex; justify-content: space-between; font-size: 15px; color: #333; margin-bottom: 10px; font-weight: 600; }
   table { width: 100%; border-collapse: collapse; }
   td { padding: 5px 0; vertical-align: top; font-size: 14px; }
