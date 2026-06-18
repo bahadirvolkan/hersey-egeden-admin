@@ -146,7 +146,7 @@ function Timeline({ order }) {
   );
 }
 
-function EditModal({ order, token, menu, onClose, onSaved }) {
+function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
   const [items, setItems] = useState(
     order.items.map(i => ({
       menu_item_id: i.menu_item_id,
@@ -433,6 +433,7 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
               🗑️ Sil
             </button>
             <button className="edit-print-btn" onClick={handlePrint}>🖨️ Yazdır</button>
+            <button className="bill-print-btn" onClick={() => onPrintBill(order.table_id)}>🧾 Hesap</button>
             <button className="edit-cancel-btn" onClick={onClose}>İptal</button>
             <button className="edit-save-btn" onClick={handleSave} disabled={saving}>
               {saving ? 'Kaydediliyor...' : 'Kaydet'}
@@ -469,12 +470,36 @@ function EditModal({ order, token, menu, onClose, onSaved }) {
 }
 
 function PaymentModal({ total, onConfirm, onClose }) {
-  const [nakit, setNakit] = useState('');
-  const [kk, setKk] = useState('');
-  const [yemek, setYemek] = useState('');
+  const [vals, setVals] = useState({ nakit: '', kk: '', yemek: '' });
+  const [tumuField, setTumuField] = useState(null); // 'nakit' | 'kk' | 'yemek' | null
 
-  const totalPaid = (parseFloat(nakit) || 0) + (parseFloat(kk) || 0) + (parseFloat(yemek) || 0);
+  const othersSum = (field) =>
+    ['nakit', 'kk', 'yemek']
+      .filter(f => f !== field)
+      .reduce((s, f) => s + (parseFloat(vals[f]) || 0), 0);
+
+  const computedVal = (field) =>
+    tumuField === field
+      ? Math.max(0, total - othersSum(field))
+      : (parseFloat(vals[field]) || 0);
+
+  const nakit_v = computedVal('nakit');
+  const kk_v    = computedVal('kk');
+  const yemek_v = computedVal('yemek');
+  const totalPaid = nakit_v + kk_v + yemek_v;
   const diff = total - totalPaid;
+
+  const handleTumu = (field) =>
+    setTumuField(prev => prev === field ? null : field);
+
+  const getDisplayVal = (field) =>
+    tumuField === field ? computedVal(field).toFixed(2) : vals[field];
+
+  const FIELDS = [
+    { key: 'nakit', label: '💵 Nakit' },
+    { key: 'kk',    label: '💳 Kredi / Banka Kartı' },
+    { key: 'yemek', label: '🎟 Yemek Kartı' },
+  ];
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -488,15 +513,25 @@ function PaymentModal({ total, onConfirm, onClose }) {
           <strong>{total.toFixed(2)} ₺</strong>
         </div>
         <div className="payment-fields">
-          {[
-            { label: '💵 Nakit', val: nakit, set: setNakit },
-            { label: '💳 Kredi / Banka Kartı', val: kk, set: setKk },
-            { label: '🎟 Yemek Kartı', val: yemek, set: setYemek },
-          ].map(({ label, val, set }) => (
-            <div key={label} className="payment-field">
-              <label>{label}</label>
-              <input type="number" min="0" step="0.01" value={val}
-                onChange={e => set(e.target.value)} placeholder="0.00" />
+          {FIELDS.map(({ key, label }) => (
+            <div key={key} className="payment-field">
+              <div className="payment-field-header">
+                <label>{label}</label>
+                <button
+                  className={`tumu-btn${tumuField === key ? ' active' : ''}`}
+                  onClick={() => handleTumu(key)}
+                >
+                  Tümü
+                </button>
+              </div>
+              <input
+                type="number" min="0" step="0.01"
+                value={getDisplayVal(key)}
+                onChange={e => setVals(prev => ({ ...prev, [key]: e.target.value }))}
+                placeholder="0.00"
+                readOnly={tumuField === key}
+                className={tumuField === key ? 'tumu-active-input' : ''}
+              />
             </div>
           ))}
         </div>
@@ -508,9 +543,7 @@ function PaymentModal({ total, onConfirm, onClose }) {
         <div className="payment-modal-actions">
           <button className="payment-cancel-btn" onClick={onClose}>İptal</button>
           <button className="payment-confirm-btn" onClick={() => onConfirm({
-            nakit: parseFloat(nakit) || 0,
-            kk: parseFloat(kk) || 0,
-            yemek: parseFloat(yemek) || 0,
+            nakit: nakit_v, kk: kk_v, yemek: yemek_v,
           })}>
             🖨️ Adisyon Bas
           </button>
@@ -901,6 +934,14 @@ function Orders({ token }) {
           menu={menu}
           onClose={() => setEditingOrder(null)}
           onSaved={handleSaved}
+          onPrintBill={async (tableId) => {
+            try {
+              const res = await axios.get(`${BACKEND_URL}/api/admin/table/${tableId}/bill`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              setPendingBill({ tableId, billData: res.data });
+            } catch (err) { alert('Hesap alınamadı'); }
+          }}
         />
       )}
 
