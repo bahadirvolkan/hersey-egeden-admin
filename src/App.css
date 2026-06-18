@@ -1880,6 +1880,19 @@ table tbody tr:hover {
 .payment-confirm-btn:hover { background: #1e2f66; }
 
 /* ───── EditModal inline payment fields ───── */
+.edit-payment-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+.edit-payment-header h4 { margin-bottom: 0; }
+.edit-payment-total { font-size: 13px; color: #555; }
+.edit-payment-total strong { color: #1a1a2e; font-size: 15px; }
+.edit-payment-diff {
+  margin-top: 10px;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
 .edit-payment-fields {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;

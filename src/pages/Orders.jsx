@@ -409,7 +409,10 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
 
           {/* Ödeme Yöntemi */}
           <div className="edit-section">
-            <h4>Ödeme Yöntemi</h4>
+            <div className="edit-payment-header">
+              <h4>Ödeme Yöntemi</h4>
+              <span className="edit-payment-total">Toplam: <strong>{finalTotal.toFixed(2)} ₺</strong></span>
+            </div>
             <div className="payment-fields edit-payment-fields">
               {[
                 { key: 'nakit', label: '💵 Nakit' },
@@ -435,6 +438,18 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
                 </div>
               ))}
             </div>
+            {(() => {
+              const paid = currentPayment.nakit + currentPayment.kk + currentPayment.yemek;
+              const diff = finalTotal - paid;
+              if (paid === 0) return null;
+              return (
+                <div className={`payment-diff edit-payment-diff ${Math.abs(diff) < 0.01 ? 'ok' : diff > 0 ? 'under' : 'over'}`}>
+                  {Math.abs(diff) < 0.01 ? '✓ Toplam eşleşiyor' :
+                   diff > 0 ? `Kalan: ${diff.toFixed(2)} ₺` :
+                   `Fazla: +${Math.abs(diff).toFixed(2)} ₺`}
+                </div>
+              );
+            })()}
           </div>
         </div>
 
