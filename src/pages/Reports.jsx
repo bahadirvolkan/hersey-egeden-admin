@@ -25,8 +25,9 @@ const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('tr-TR', {
   weekday: 'short', day: 'numeric', month: 'long'
 });
 
-function SummaryCards({ total_orders, total_revenue, unique_tables, active_days, total_nakit, total_kk, total_yemek, total_expense }) {
-  const net = (Number(total_revenue) || 0) - (Number(total_expense) || 0);
+function SummaryCards({ total_orders, total_revenue, unique_tables, active_days, total_nakit, total_kk, total_yemek, total_tahsilat, total_expense }) {
+  const tahsilat = Number(total_tahsilat) || 0;
+  const net = tahsilat - (Number(total_expense) || 0);
   return (
     <>
       <div className="report-cards">
@@ -37,6 +38,10 @@ function SummaryCards({ total_orders, total_revenue, unique_tables, active_days,
         <div className="card">
           <h3>Toplam Ciro</h3>
           <p className="value">{total_revenue != null ? Number(total_revenue).toFixed(2) + ' ₺' : '—'}</p>
+        </div>
+        <div className="card">
+          <h3>Toplam Tahsilat</h3>
+          <p className="value">{tahsilat.toFixed(2)} ₺</p>
         </div>
         <div className="card">
           <h3>Kullanılan Masa</h3>
@@ -136,11 +141,12 @@ function Reports({ token }) {
         'Tarih': dailyDate,
         'Toplam Sipariş': dailySummary.total_orders,
         'Toplam Ciro (₺)': Number(dailySummary.total_revenue).toFixed(2),
+        'Toplam Tahsilat (₺)': Number(dailySummary.total_tahsilat || 0).toFixed(2),
         'Nakit (₺)': Number(dailySummary.total_nakit || 0).toFixed(2),
         'Kredi/Banka (₺)': Number(dailySummary.total_kk || 0).toFixed(2),
         'Yemek Kartı (₺)': Number(dailySummary.total_yemek || 0).toFixed(2),
         'Giderler (₺)': Number(dailySummary.total_expense || 0).toFixed(2),
-        'Net Kazanç (₺)': (Number(dailySummary.total_revenue) - Number(dailySummary.total_expense || 0)).toFixed(2),
+        'Net Kazanç (₺)': (Number(dailySummary.total_tahsilat || 0) - Number(dailySummary.total_expense || 0)).toFixed(2),
         'Kullanılan Masa': dailySummary.unique_tables,
       }]), 'Özet');
     }
@@ -164,11 +170,12 @@ function Reports({ token }) {
         'Ay': fmtMonth(month),
         'Toplam Sipariş': monthlyData.total_orders,
         'Toplam Ciro (₺)': Number(monthlyData.total_revenue).toFixed(2),
+        'Toplam Tahsilat (₺)': Number(monthlyData.total_tahsilat || 0).toFixed(2),
         'Nakit (₺)': Number(monthlyData.total_nakit || 0).toFixed(2),
         'Kredi/Banka (₺)': Number(monthlyData.total_kk || 0).toFixed(2),
         'Yemek Kartı (₺)': Number(monthlyData.total_yemek || 0).toFixed(2),
         'Giderler (₺)': Number(monthlyData.total_expense || 0).toFixed(2),
-        'Net Kazanç (₺)': (Number(monthlyData.total_revenue) - Number(monthlyData.total_expense || 0)).toFixed(2),
+        'Net Kazanç (₺)': (Number(monthlyData.total_tahsilat || 0) - Number(monthlyData.total_expense || 0)).toFixed(2),
         'Kullanılan Masa': monthlyData.unique_tables,
         'Aktif Gün': monthlyData.active_days,
       }]), 'Özet');
@@ -179,6 +186,7 @@ function Reports({ token }) {
           'Tarih': d.date,
           'Sipariş': d.total_orders,
           'Ciro (₺)': Number(d.total_revenue).toFixed(2),
+          'Tahsilat (₺)': Number(d.tahsilat || 0).toFixed(2),
           'Nakit (₺)': Number(d.nakit || 0).toFixed(2),
           'Kredi/Banka (₺)': Number(d.kk || 0).toFixed(2),
           'Yemek Kartı (₺)': Number(d.yemek || 0).toFixed(2),
@@ -247,6 +255,7 @@ function Reports({ token }) {
                   total_nakit={dailySummary.total_nakit}
                   total_kk={dailySummary.total_kk}
                   total_yemek={dailySummary.total_yemek}
+                  total_tahsilat={dailySummary.total_tahsilat}
                   total_expense={dailySummary.total_expense}
                 />
               )}
@@ -324,6 +333,7 @@ function Reports({ token }) {
                   total_nakit={monthlyData.total_nakit}
                   total_kk={monthlyData.total_kk}
                   total_yemek={monthlyData.total_yemek}
+                  total_tahsilat={monthlyData.total_tahsilat}
                   total_expense={monthlyData.total_expense}
                 />
               )}
@@ -333,7 +343,7 @@ function Reports({ token }) {
                   <h3>Günlük Döküm</h3>
                   <table className="report-table">
                     <thead>
-                      <tr><th>Tarih</th><th>Sipariş</th><th>Ciro</th><th>Masa</th></tr>
+                      <tr><th>Tarih</th><th>Sipariş</th><th>Ciro</th><th>Tahsilat</th><th>Masa</th></tr>
                     </thead>
                     <tbody>
                       {monthlyData.daily.map(d => (
@@ -341,6 +351,7 @@ function Reports({ token }) {
                           <td>{fmtDate(d.date)}</td>
                           <td>{d.total_orders}</td>
                           <td>{Number(d.total_revenue).toFixed(2)} ₺</td>
+                          <td>{Number(d.tahsilat || 0).toFixed(2)} ₺</td>
                           <td>{d.unique_tables}</td>
                         </tr>
                       ))}
@@ -350,6 +361,7 @@ function Reports({ token }) {
                         <td><strong>Toplam</strong></td>
                         <td><strong>{monthlyData.total_orders}</strong></td>
                         <td><strong>{Number(monthlyData.total_revenue).toFixed(2)} ₺</strong></td>
+                        <td><strong>{Number(monthlyData.total_tahsilat || 0).toFixed(2)} ₺</strong></td>
                         <td></td>
                       </tr>
                     </tfoot>
