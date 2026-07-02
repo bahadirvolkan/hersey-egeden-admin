@@ -935,7 +935,7 @@ function Orders({ token }) {
       });
       const detailed = res.data;
 
-      const header = ['No', 'Masa', 'Durum', 'Tutar (₺)', 'Nakit (₺)', 'Kart (₺)', 'Yemek (₺)', 'Tahsilat (₺)', 'Ürün', 'Adet', 'Birim Fiyat (₺)', 'Satır Tutar (₺)', 'Zaman'];
+      const header = ['No', 'Masa', 'Durum', 'Zaman', 'Ürün', 'Adet', 'Birim Fiyat (₺)', 'Satır Tutar (₺)', 'Toplam (₺)', 'Nakit (₺)', 'Kart (₺)', 'Yemek (₺)', 'Tahsilat (₺)'];
       const rows = [header];
       const rowMeta = [{ level: 0 }];
 
@@ -945,17 +945,17 @@ function Orders({ token }) {
         const kk = parseFloat(order.payment_kk) || 0;
         const yemek = parseFloat(order.payment_yemek) || 0;
         const tahsilat = nakit + kk + yemek;
-        rows.push([`#${order.id}`, `Masa ${order.table_number}`, status, parseFloat(order.total_price).toFixed(2), nakit > 0 ? nakit.toFixed(2) : '', kk > 0 ? kk.toFixed(2) : '', yemek > 0 ? yemek.toFixed(2) : '', tahsilat > 0 ? tahsilat.toFixed(2) : '', '', '', '', '', fmtDateTime(order.created_at)]);
+        rows.push([`#${order.id}`, `Masa ${order.table_number}`, status, fmtDateTime(order.created_at), '', '', '', '', parseFloat(order.total_price).toFixed(2), nakit > 0 ? nakit.toFixed(2) : '', kk > 0 ? kk.toFixed(2) : '', yemek > 0 ? yemek.toFixed(2) : '', tahsilat > 0 ? tahsilat.toFixed(2) : '']);
         rowMeta.push({ level: 0 });
         for (const item of order.items) {
-          rows.push(['', '', '', '', '', '', '', '', item.name, item.quantity, parseFloat(item.price_at_purchase).toFixed(2), (item.quantity * parseFloat(item.price_at_purchase)).toFixed(2), '']);
+          rows.push(['', '', '', '', item.name, item.quantity, parseFloat(item.price_at_purchase).toFixed(2), (item.quantity * parseFloat(item.price_at_purchase)).toFixed(2), '', '', '', '', '']);
           rowMeta.push({ level: 1 });
         }
       }
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
       ws['!rows'] = rowMeta;
-      ws['!cols'] = [{ wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 28 }, { wch: 6 }, { wch: 16 }, { wch: 14 }, { wch: 16 }];
+      ws['!cols'] = [{ wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 28 }, { wch: 6 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Adisyonlar');
       XLSX.writeFile(wb, `adisyonlar-${selectedDate}.xlsx`);
