@@ -510,7 +510,7 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
   );
 }
 
-function PaymentModal({ total, onConfirm, onClose }) {
+function PaymentModal({ total, onConfirm, onClose, autoPrint = true }) {
   const [vals, setVals] = useState({ nakit: '', kk: '', yemek: '' });
   const [tumuField, setTumuField] = useState(null); // 'nakit' | 'kk' | 'yemek' | null
 
@@ -586,7 +586,7 @@ function PaymentModal({ total, onConfirm, onClose }) {
           <button className="payment-confirm-btn" onClick={() => onConfirm({
             nakit: nakit_v, kk: kk_v, yemek: yemek_v,
           })}>
-            🖨️ Adisyon Bas
+            {autoPrint ? '🖨️ Adisyon Bas' : '✓ Onayla'}
           </button>
         </div>
       </div>
@@ -770,7 +770,7 @@ function Orders({ token }) {
       } catch (err) { console.error('Auto-print failed:', err); }
     });
     socket.on('table:closed', async ({ table_id }) => {
-      if (!ready || !autoPrintRef.current) return;
+      if (!ready) return;
       try {
         const res = await axios.get(`${BACKEND_URL}/api/admin/table/${table_id}/bill`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -1081,6 +1081,20 @@ function Orders({ token }) {
                           {orderDetails[order.id].customer_note && (
                             <p className="order-note"><strong>Not:</strong> {orderDetails[order.id].customer_note}</p>
                           )}
+                          {(() => {
+                            const d = orderDetails[order.id];
+                            const nakit = parseFloat(d.payment_nakit) || 0;
+                            const kk = parseFloat(d.payment_kk) || 0;
+                            const yemek = parseFloat(d.payment_yemek) || 0;
+                            if (nakit + kk + yemek === 0) return null;
+                            return (
+                              <div className="order-payment-summary">
+                                {nakit > 0 && <span>💵 Nakit: {nakit.toFixed(2)} ₺</span>}
+                                {kk > 0 && <span>💳 Kart: {kk.toFixed(2)} ₺</span>}
+                                {yemek > 0 && <span>🎟 Yemek: {yemek.toFixed(2)} ₺</span>}
+                              </div>
+                            );
+                          })()}
                           <Timeline order={orderDetails[order.id]} />
                         </div>
                       </td>
@@ -1149,6 +1163,7 @@ function Orders({ token }) {
 
       {pendingBill && (
         <PaymentModal
+          autoPrint={autoPrintEnabled}
           total={pendingBill.billData.orders.reduce((s, o) => s + parseFloat(o.total_price), 0)}
           onClose={() => setPendingBill(null)}
           onConfirm={async (payment) => {
@@ -1162,7 +1177,9 @@ function Orders({ token }) {
                 }, { headers: { Authorization: `Bearer ${token}` } });
               } catch (err) { console.error('Ödeme kaydetme hatası:', err); }
             }
-            autoPrintBill({ ...pendingBill.billData, payment });
+            if (autoPrintEnabled) {
+              autoPrintBill({ ...pendingBill.billData, payment });
+            }
             setPendingBill(null);
           }}
         />
