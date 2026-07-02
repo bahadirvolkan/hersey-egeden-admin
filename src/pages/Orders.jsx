@@ -594,6 +594,142 @@ function PaymentModal({ total, onConfirm, onClose }) {
   );
 }
 
+function ManuelAdisyonModal({ token, menu, onClose, onSaved }) {
+  const [tables, setTables] = useState([]);
+  const [tableId, setTableId] = useState('');
+  const [items, setItems] = useState([]);
+  const [addSearch, setAddSearch] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${BACKEND_URL}/api/tables`).then(r => setTables(r.data)).catch(() => {});
+  }, []);
+
+  const allMenuItems = menu.flatMap(c => c.items || []);
+  const filtered = addSearch.trim()
+    ? allMenuItems.filter(m => m.name.toLowerCase().includes(addSearch.toLowerCase()))
+    : [];
+
+  const addMenuItem = (menuItem) => {
+    const exists = items.findIndex(i => i.menu_item_id === menuItem.id);
+    if (exists >= 0) {
+      setItems(prev => prev.map((it, i) => i === exists ? { ...it, quantity: it.quantity + 1 } : it));
+    } else {
+      setItems(prev => [...prev, {
+        menu_item_id: menuItem.id,
+        name: menuItem.name,
+        quantity: 1,
+        price_at_purchase: parseFloat(menuItem.price),
+      }]);
+    }
+    setAddSearch('');
+  };
+
+  const updateQty = (idx, qty) => {
+    if (qty < 1) setItems(prev => prev.filter((_, i) => i !== idx));
+    else setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: qty } : it));
+  };
+
+  const total = items.reduce((s, i) => s + i.price_at_purchase * i.quantity, 0);
+
+  const handleSave = async () => {
+    if (!tableId) return alert('Masa seçin');
+    if (!items.length) return alert('En az bir ürün ekleyin');
+    setSaving(true);
+    try {
+      await axios.post(`${BACKEND_URL}/api/orders`, {
+        table_id: parseInt(tableId),
+        items: items.map(i => ({ menu_item_id: i.menu_item_id, quantity: i.quantity })),
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      alert('Adisyon oluşturulamadı');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="edit-modal" onClick={e => e.stopPropagation()}>
+        <div className="edit-modal-header">
+          <h3>Manuel Adisyon Ekle</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="edit-modal-body">
+          <div className="edit-section">
+            <h4>Masa</h4>
+            <select
+              value={tableId}
+              onChange={e => setTableId(e.target.value)}
+              style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #ddd', fontSize: 14 }}
+            >
+              <option value="">Masa seçin...</option>
+              {tables.map(t => (
+                <option key={t.id} value={t.id}>Masa {t.table_number}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="edit-section">
+            <h4>Ürünler</h4>
+            {items.map((item, idx) => (
+              <div key={idx} className="edit-item-row">
+                <span className="edit-item-name">{item.name}</span>
+                <span className="edit-item-price">{item.price_at_purchase} ₺</span>
+                <div className="edit-qty-ctrl">
+                  <button onClick={() => updateQty(idx, item.quantity - 1)}>−</button>
+                  <span>{item.quantity}</span>
+                  <button onClick={() => updateQty(idx, item.quantity + 1)}>+</button>
+                </div>
+                <span className="edit-item-subtotal">{(item.price_at_purchase * item.quantity).toFixed(2)} ₺</span>
+                <button className="edit-remove-btn" onClick={() => updateQty(idx, 0)}>🗑</button>
+              </div>
+            ))}
+            <div className="edit-add-row" style={{ marginTop: 8 }}>
+              <input
+                className="edit-search"
+                value={addSearch}
+                onChange={e => setAddSearch(e.target.value)}
+                placeholder="Menüden ara..."
+              />
+            </div>
+            {filtered.length > 0 && (
+              <div className="edit-search-results">
+                {filtered.slice(0, 8).map(m => (
+                  <button key={m.id} className="edit-search-item" onClick={() => addMenuItem(m)}>
+                    <span>{m.name}</span>
+                    <span>{m.price} ₺</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {items.length > 0 && (
+            <div className="edit-summary">
+              <div className="edit-summary-row total">
+                <span>Toplam</span>
+                <span>{total.toFixed(2)} ₺</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="edit-modal-footer">
+          <div className="edit-footer-left" />
+          <div className="edit-footer-right">
+            <button className="edit-cancel-btn" onClick={onClose}>İptal</button>
+            <button className="edit-save-btn" onClick={handleSave} disabled={saving}>
+              {saving ? 'Oluşturuluyor...' : '✓ Adisyon Oluştur'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Orders({ token }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -605,6 +741,7 @@ function Orders({ token }) {
   const [menu, setMenu] = useState([]);
   const [partialSelections, setPartialSelections] = useState({});
   const [pendingBill, setPendingBill] = useState(null); // { tableId, billData }
+  const [manuelModal, setManuelModal] = useState(false);
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(
     () => localStorage.getItem('autoPrint') !== 'false'
   );
@@ -829,6 +966,9 @@ function Orders({ token }) {
             Bugün
           </button>
         </div>
+        <button className="manuel-adisyon-btn" onClick={() => setManuelModal(true)}>
+          ➕ Manuel Adisyon
+        </button>
         <button className="excel-btn" onClick={exportExcel} disabled={orders.length === 0}>
           📥 Excel
         </button>
@@ -995,6 +1135,15 @@ function Orders({ token }) {
               }
             } catch (err) { alert('Hesap alınamadı'); }
           }}
+        />
+      )}
+
+      {manuelModal && (
+        <ManuelAdisyonModal
+          token={token}
+          menu={menu}
+          onClose={() => setManuelModal(false)}
+          onSaved={handleSaved}
         />
       )}
 

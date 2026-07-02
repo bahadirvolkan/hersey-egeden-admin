@@ -1768,6 +1768,20 @@ table tbody tr:hover {
   font-size: 15px;
 }
 
+.manuel-adisyon-btn {
+  background: #e67e22;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.manuel-adisyon-btn:hover { opacity: 0.85; }
+
 .excel-btn {
   background: #1a7a4a;
   color: #fff;
