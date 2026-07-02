@@ -24,6 +24,11 @@ const fmtMonth = (m) => {
 const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('tr-TR', {
   weekday: 'short', day: 'numeric', month: 'long'
 });
+const fmtDateExcel = (d) => {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${day}.${m}.${y}`;
+};
 
 function SummaryCards({ total_orders, total_revenue, unique_tables, active_days, total_nakit, total_kk, total_yemek, total_tahsilat, total_expense }) {
   const tahsilat = Number(total_tahsilat) || 0;
@@ -138,7 +143,7 @@ function Reports({ token }) {
     const wb = XLSX.utils.book_new();
     if (dailySummary) {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{
-        'Tarih': dailyDate,
+        'Tarih': fmtDateExcel(dailyDate),
         'Toplam Sipariş': dailySummary.total_orders,
         'Toplam Ciro (₺)': Number(dailySummary.total_revenue).toFixed(2),
         'Toplam Tahsilat (₺)': Number(dailySummary.total_tahsilat || 0).toFixed(2),
@@ -183,7 +188,7 @@ function Reports({ token }) {
     if (monthlyData?.daily?.length) {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
         monthlyData.daily.map(d => ({
-          'Tarih': d.date,
+          'Tarih': fmtDateExcel(d.date),
           'Sipariş': d.total_orders,
           'Ciro (₺)': Number(d.total_revenue).toFixed(2),
           'Tahsilat (₺)': Number(d.tahsilat || 0).toFixed(2),
