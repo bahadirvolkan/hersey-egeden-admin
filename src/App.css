@@ -1894,6 +1894,39 @@ table tbody tr:hover {
 .payment-diff.ok { background: #e8f5e9; color: #2e7d32; }
 .payment-diff.under { background: #fff8e1; color: #f57c00; }
 .payment-diff.over { background: #fce4ec; color: #c62828; }
+.payment-mismatch-warning {
+  background: #fff3cd;
+  border: 1.5px solid #f0ad4e;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #7a5000;
+  margin-bottom: 10px;
+}
+
+.payment-mismatch-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.payment-mismatch-actions button {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1.5px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mismatch-confirm-ok {
+  background: #e67e22 !important;
+  color: #fff !important;
+  border-color: #e67e22 !important;
+}
+
 .payment-modal-actions { display: flex; gap: 10px; }
 .payment-cancel-btn {
   flex: 1; padding: 11px; border: 1.5px solid #dde1f0; background: #fff;

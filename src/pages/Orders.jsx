@@ -512,7 +512,8 @@ function EditModal({ order, token, menu, onClose, onSaved, onPrintBill }) {
 
 function PaymentModal({ total, onConfirm, onClose, autoPrint = true }) {
   const [vals, setVals] = useState({ nakit: '', kk: '', yemek: '' });
-  const [tumuField, setTumuField] = useState(null); // 'nakit' | 'kk' | 'yemek' | null
+  const [tumuField, setTumuField] = useState(null);
+  const [mismatchConfirm, setMismatchConfirm] = useState(false);
 
   const othersSum = (field) =>
     ['nakit', 'kk', 'yemek']
@@ -581,11 +582,27 @@ function PaymentModal({ total, onConfirm, onClose, autoPrint = true }) {
            diff > 0 ? `Kalan: ${diff.toFixed(2)} ₺` :
            `Fazla: +${Math.abs(diff).toFixed(2)} ₺`}
         </div>
+        {mismatchConfirm && (
+          <div className="payment-mismatch-warning">
+            <span>⚠️ Tahsilat ({(nakit_v + kk_v + yemek_v).toFixed(2)} ₺) hesap tutarıyla ({total.toFixed(2)} ₺) eşleşmiyor. Yine de kaydet?</span>
+            <div className="payment-mismatch-actions">
+              <button onClick={() => setMismatchConfirm(false)}>Geri Dön</button>
+              <button className="mismatch-confirm-ok" onClick={() => onConfirm({ nakit: nakit_v, kk: kk_v, yemek: yemek_v })}>
+                Evet, Kaydet
+              </button>
+            </div>
+          </div>
+        )}
         <div className="payment-modal-actions">
           <button className="payment-cancel-btn" onClick={onClose}>İptal</button>
-          <button className="payment-confirm-btn" onClick={() => onConfirm({
-            nakit: nakit_v, kk: kk_v, yemek: yemek_v,
-          })}>
+          <button className="payment-confirm-btn" onClick={() => {
+            const paid = nakit_v + kk_v + yemek_v;
+            if (paid > 0 && Math.abs(total - paid) > 0.01) {
+              setMismatchConfirm(true);
+            } else {
+              onConfirm({ nakit: nakit_v, kk: kk_v, yemek: yemek_v });
+            }
+          }}>
             {autoPrint ? '🖨️ Adisyon Bas' : '✓ Onayla'}
           </button>
         </div>
